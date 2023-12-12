@@ -1,0 +1,4 @@
+/Users/szymontomiak/Documents/Politechnika Poznanska/Semestr 5/Sieci komputerowe 2/Projekt/Client/cmake-build-debug/CMakeFiles/client.dir
+/Users/szymontomiak/Documents/Politechnika Poznanska/Semestr 5/Sieci komputerowe 2/Projekt/Client/cmake-build-debug/CMakeFiles/Client.dir
+/Users/szymontomiak/Documents/Politechnika Poznanska/Semestr 5/Sieci komputerowe 2/Projekt/Client/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/szymontomiak/Documents/Politechnika Poznanska/Semestr 5/Sieci komputerowe 2/Projekt/Client/cmake-build-debug/CMakeFiles/rebuild_cache.dir
