@@ -23,4 +23,8 @@ add_executable(Client src/main.cpp
         src/HandleShare.cpp
         src/HandleUnshare.cpp
         include/HandleBreak.h
+        include/ServerCommunicator.h
+        src/ServerCommunicator.cpp
+        include/MessageCreator.h
+        src/MessageCreator.cpp
 )
