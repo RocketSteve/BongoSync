@@ -24,6 +24,7 @@ ServerCommunicator::~ServerCommunicator() {
 
 bool ServerCommunicator::connectToServer() {
     if (connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        isConnected = false;
         return false;
     }
     isConnected = true;
