@@ -1,9 +1,9 @@
 #include "../include/HandleStart.h"
-#include <iostream>
+
 
 void HandleStart::initiateStart() {
     if (configExists()) {
-        std::string password = promptForPassword();
+        std::string password = Utility::promptForPassword();
         if (validateWithServer(password)) {
             getLatestVersion();
             startFileServices();
@@ -12,23 +12,30 @@ void HandleStart::initiateStart() {
 }
 
 bool HandleStart::configExists() {
-    // Implementation of checking if config exists
     std::cout << "Checking if config exists ...\n";
-    return true;
-}
-
-std::string HandleStart::promptForPassword() {
-    std::string password;
-    std::cout << "Enter your password: ";
-    // You might want to implement a more secure way to read the password
-    std::getline(std::cin, password);
-    return password;
+    if (std::filesystem::exists(std::string(getenv("HOME")) + "/.bongo/config.json")) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool HandleStart::validateWithServer(const std::string& password) {
     std::cout << "Validating with server ...\n" << password << "\n";
 
     bool response;
+    MessageCreator msgCreator;
+    std::string email = Utility::getEmailFromConfig();
+// Implementation of validating with server
+    std::string passwdHash = Utility::hashPassword(password);
+    std::string msg = msgCreator.createLoginMessage(email, passwdHash);
+
+    auto& serverCommunicator = ServerCommunicator::getInstance();
+    if (!serverCommunicator.isConnectedToServer() && !serverCommunicator.connectToServer()) {
+        std::cerr << "Failed to connect to server\n";
+        return false;
+    }
+    serverCommunicator.sendMessage(msg);
 
     if (response == false) {
         std::cout << "Password is incorrect, please try again.\n";

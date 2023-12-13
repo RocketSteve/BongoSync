@@ -1,63 +1,41 @@
 #include "../include/HandleRegister.h"
+#include "../include/ServerCommunicator.h"
+#include "../include/MessageCreator.h"
+#include "../include/Utility.h"
 #include <iostream>
 
 void HandleRegister::initiateRegistration() {
-    std::string email = promptForEmail();
+
+    std::string email = Utility::promptForEmail();
     std::string password;
-    std::string hostname = getHostname();
+    std::string hostname = Utility::getHostname();
 
     do {
-        password = promptForPassword();
-    } while (!confirmPassword(password));
+        password = Utility::promptForPassword();
+    } while (!Utility::confirmPassword(password));
 
     if (checkWithServer(email, password, hostname)) {
         std::cout << "User already exists, please try again.\n";
         initiateRegistration();
     } else {
-        createConfigFile(email, password, hostname);
+        createConfigFile(email, hostname);
     }
-}
-
-std::string HandleRegister::promptForEmail() {
-    std::string email;
-    std::cout << "Enter your email: ";
-    std::getline(std::cin, email);
-    return email;
-}
-
-std::string HandleRegister::promptForPassword() {
-    std::string password;
-    std::cout << "Enter your password: ";
-    // You might want to implement a more secure way to read the password
-    std::getline(std::cin, password);
-    return password;
-}
-
-bool HandleRegister::confirmPassword(const std::string& password) {
-    std::string confirmPassword;
-    std::cout << "Confirm your password: ";
-    std::getline(std::cin, confirmPassword);
-
-    if (password != confirmPassword) {
-        std::cout << "Passwords do not match, please try again.\n";
-        return false;
-    }
-    return true;
-}
-
-std::string HandleRegister::getHostname() {
-    // Implementation of getting hostname
-    std::string hostname = "localhost";
-
-    return hostname;
 }
 
 bool HandleRegister::checkWithServer(const std::string& email, const std::string& password, const std::string& hostname) {
     // Implementation of checking with server
-    bool response;
-
     std::cout << "Checking with server ...\n" << email << "\n" << password << "\n" << hostname << "\n";
 
+    bool response;
+    auto& communicator = ServerCommunicator::getInstance();
+    if (!communicator.isConnectedToServer() && !communicator.connectToServer()) {
+        std::cerr << "Failed to connect to server\n";
+        return false;
+    }
+
+    MessageCreator messageCreator;
+    std::string message = messageCreator.createRegistratioMessage(email, password, hostname);
+    response = communicator.sendMessage(message);
 
     if (response) {
         return true;
@@ -66,8 +44,22 @@ bool HandleRegister::checkWithServer(const std::string& email, const std::string
     }
 }
 
-void HandleRegister::createConfigFile(const std::string& email, const std::string& password, const std::string& hostname) {
-    // Implementation of creating config file
+void HandleRegister::createConfigFile(const std::string& email, const std::string& hostname) {
+    const std::string filesDir = std::filesystem::current_path();
+    const std::string configDir = std::filesystem::path(getenv("HOME")) / ".bongo";
+    const std::string configFile = configDir + "/config.json";
 
-    std::cout  << "Creating config file ...\n" << email << "\n" << password << "\n" << hostname << "\n";
+    // Create the hidden directory if it does not exist
+    std::filesystem::create_directories(configDir);
+
+    // Write email and hostname to the config file
+    std::ofstream out(configFile);
+    if (out) {
+        out << "Email: " << email << "\n";
+        out << "Hostname: " << hostname << "\n";
+        out << "Path: " << filesDir << "\n";
+        std::cout << "Configuration file created at: " << configFile << std::endl;
+    } else {
+        std::cerr << "Failed to create configuration file at: " << configFile << std::endl;
+    }
 }
