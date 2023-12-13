@@ -8,3 +8,10 @@ std::string MessageCreator::createRegistratioMessage(const std::string& email, c
     j["hostname"] = hostname;
     return j.dump();
 }
+
+std::string MessageCreator::createLoginMessage(const std::string& email, const std::string& password) {
+    nlohmann::json j;
+    j["email"] = email;
+    j["password"] = password;
+    return j.dump();
+}

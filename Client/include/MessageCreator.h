@@ -5,6 +5,7 @@
 class MessageCreator {
 public:
     std::string createRegistratioMessage(const std::string& email, const std::string& password, const std::string& hostname);
+    std::string createLoginMessage(const std::string& email, const std::string& password);
     std::string askIfLatestMessage(const std::string& treeHash);
 };
 
