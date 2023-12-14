@@ -6,6 +6,11 @@
 #include <unistd.h>
 #include <fstream>
 #include <filesystem>
+#include <iostream>
+#include "../include/Utility.h"
+#include "../include/ServerCommunicator.h"
+#include "../include/MessageBuilder.h"
+#include "../include/MessageCreator.h"
 
 class HandleRegister {
 public:

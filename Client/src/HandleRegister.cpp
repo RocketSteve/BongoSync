@@ -1,8 +1,4 @@
 #include "../include/HandleRegister.h"
-#include "../include/ServerCommunicator.h"
-#include "../include/MessageCreator.h"
-#include "../include/Utility.h"
-#include <iostream>
 
 void HandleRegister::initiateRegistration() {
 
@@ -33,9 +29,13 @@ bool HandleRegister::checkWithServer(const std::string& email, const std::string
         return false;
     }
 
-    MessageCreator messageCreator;
-    std::string message = messageCreator.createRegistratioMessage(email, password, hostname);
-    response = communicator.sendMessage(message);
+    MessageBuilder messageCreator;
+    std::string regMessage = MessageCreator::create()
+            .setEmail(email)
+            .setHostname(hostname)
+            .setPassword(password)
+            .buildRegistrationMessage();
+    response = communicator.sendMessage(regMessage);
 
     if (response) {
         return true;
