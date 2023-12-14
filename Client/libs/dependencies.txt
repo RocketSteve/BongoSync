@@ -1,3 +1,5 @@
 libuv
 blake3
-boost.test
+nlohmann/json.hpp
+opensSsl
+```
