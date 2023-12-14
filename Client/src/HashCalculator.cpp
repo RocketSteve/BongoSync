@@ -1,34 +1,27 @@
 #include "../include/HashCalculator.h"
-#include "blake3.h"  // Include the BLAKE3 header
-#include <fstream>
-#include <sstream>
-#include <vector>
 
-std::string HashCalculator::calculateHash(const std::string& filePath) {
-    std::ifstream fileStream(filePath, std::ios::binary);
-    if (!fileStream) {
-        throw std::runtime_error("Could not open file for hashing: " + filePath);
-    }
 
-    // Initialize BLAKE3 hasher
+std::string HashCalculator::calculateHash(const std::string& input) {
     blake3_hasher hasher;
     blake3_hasher_init(&hasher);
 
-    // Read and hash the file content
-    std::vector<char> buffer(1024 * 1024); // Buffer size can be adjusted
-    while (fileStream.read(buffer.data(), buffer.size()) || fileStream.gcount()) {
-        blake3_hasher_update(&hasher, buffer.data(), fileStream.gcount());
+    // If the input is a file path
+    if (std::ifstream file{input, std::ios::binary}; file) {
+        std::vector<char> buffer(1024 * 1024);  // 1MB buffer
+        while (file.read(buffer.data(), buffer.size()) || file.gcount()) {
+            blake3_hasher_update(&hasher, buffer.data(), file.gcount());
+        }
+    } else {
+        // If the input is a regular string
+        blake3_hasher_update(&hasher, input.data(), input.size());
     }
 
-    // Finalize the hash
     unsigned char hash[BLAKE3_OUT_LEN];
     blake3_hasher_finalize(&hasher, hash, BLAKE3_OUT_LEN);
 
-    // Convert the hash to a hex string
-    std::stringstream hashString;
+    std::stringstream ss;
     for (unsigned char c : hash) {
-        hashString << std::hex << static_cast<int>(c);
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
     }
-
-    return hashString.str();
+    return ss.str();
 }

@@ -2,6 +2,12 @@
 #define HASHCALCULATOR_H
 
 #include <string>
+#include "blake3.h"
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <iomanip>
+
 
 class HashCalculator {
 public:
