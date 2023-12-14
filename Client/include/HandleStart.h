@@ -6,6 +6,7 @@
 #include <filesystem>
 #include "../include/Utility.h"
 #include "../include/ServerCommunicator.h"
+#include "../include/MessageBuilder.h"
 #include "../include/MessageCreator.h"
 
 class HandleStart {

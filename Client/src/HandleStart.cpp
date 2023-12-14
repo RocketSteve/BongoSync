@@ -1,5 +1,6 @@
 #include "../include/HandleStart.h"
 
+// TODO Complete start file services  ad get latest
 
 void HandleStart::initiateStart() {
     if (configExists()) {
@@ -8,6 +9,9 @@ void HandleStart::initiateStart() {
             getLatestVersion();
             startFileServices();
         }
+    } else {
+        std::cout << "No config found, please run bongo register\n";
+        return;
     }
 }
 
@@ -23,26 +27,40 @@ bool HandleStart::configExists() {
 bool HandleStart::validateWithServer(const std::string& password) {
     std::cout << "Validating with server ...\n" << password << "\n";
 
-    bool response;
-    MessageCreator msgCreator;
     std::string email = Utility::getEmailFromConfig();
-// Implementation of validating with server
     std::string passwdHash = Utility::hashPassword(password);
-    std::string msg = msgCreator.createLoginMessage(email, passwdHash);
+
+    MessageBuilder messageCreator;
+    std::string loginMessage = MessageCreator::create()
+            .setEmail(email)
+            .setPassword(passwdHash)
+            .buildLoginMessage();
 
     auto& serverCommunicator = ServerCommunicator::getInstance();
     if (!serverCommunicator.isConnectedToServer() && !serverCommunicator.connectToServer()) {
         std::cerr << "Failed to connect to server\n";
         return false;
     }
-    serverCommunicator.sendMessage(msg);
+    serverCommunicator.sendMessage(loginMessage);
 
-    if (response == false) {
-        std::cout << "Password is incorrect, please try again.\n";
+    std::string responseStr;
+    if (!serverCommunicator.receiveMessage(responseStr)) {
+        std::cerr << "Failed to receive response from server.\n";
         return false;
-    } else {
-        return true;
     }
+
+    // Parse the JSON response
+    auto responseJson = nlohmann::json::parse(responseStr);
+    bool isSuccess = responseJson["success"];
+    std::string message = responseJson["message"];
+
+    if (!isSuccess) {
+        std::cout << "Server response: " << message << "\n";
+        return false;
+    }
+
+    std::cout << "Server response: " << message << "\n";
+    return true;
 }
 
 void HandleStart::startFileServices() {
