@@ -1,12 +1,13 @@
-#ifndef CLIENT_MESSAGECREATOR_H
-#define CLIENT_MESSAGECREATOR_H
-#include <string>
+#ifndef MESSAGECREATOR_H
+#define MESSAGECREATOR_H
+
+#include "MessageBuilder.h"
 
 class MessageCreator {
 public:
-    std::string createRegistratioMessage(const std::string& email, const std::string& password, const std::string& hostname);
-    std::string createLoginMessage(const std::string& email, const std::string& password);
-    std::string askIfLatestMessage(const std::string& treeHash);
+    static MessageBuilder create() {
+        return MessageBuilder();
+    }
 };
 
-#endif //CLIENT_MESSAGECREATOR_H
+#endif // MESSAGECREATOR_H
