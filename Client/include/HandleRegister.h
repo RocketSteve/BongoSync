@@ -1,6 +1,10 @@
 #ifndef HANDLEREGISTER_H
 #define HANDLEREGISTER_H
 
+// TODO add:
+// 1. responseprocessing maybe move to new class
+// 2. message recieval
+
 #include <string>
 #include <termios.h>
 #include <unistd.h>

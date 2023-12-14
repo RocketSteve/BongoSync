@@ -1,6 +1,8 @@
 #ifndef CLIENT_HANDLEBREAK_H
 #define CLIENT_HANDLEBREAK_H
 
+// TODO add file watcher stop
+
 #include "../include/FileWatcher.h"
 #include "../include/ServerCommunicator.h"
 

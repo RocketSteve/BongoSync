@@ -1,5 +1,9 @@
 #ifndef CLIENT_HANDLESTART_H
 #define CLIENT_HANDLESTART_H
+// TODO
+// 1. Complete file services
+// 2. Complete getLatestVersion
+
 
 #include <string>
 #include <iostream>

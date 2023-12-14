@@ -1,6 +1,6 @@
 #include "../include/HandleStart.h"
 
-// TODO Complete start file services  ad get latest
+
 
 void HandleStart::initiateStart() {
     if (configExists()) {

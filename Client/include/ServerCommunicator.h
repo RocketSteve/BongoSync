@@ -1,6 +1,8 @@
 #ifndef SERVERCOMMUNICATOR_H
 #define SERVERCOMMUNICATOR_H
 
+// TODO revise the recieval and sending of messages and files make sure to ise TCP
+
 #include <string>
 #include <netinet/in.h>
 #include <sys/socket.h>

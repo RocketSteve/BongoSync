@@ -1,6 +1,8 @@
 #ifndef CLIENT_HANDLESYNC_H
 #define CLIENT_HANDLESYNC_H
 
+// TODO add server response processing class
+
 #include "../include/Utility.h"
 #include "../include/ServerCommunicator.h"
 #include "../include/MessageBuilder.h"

@@ -1,6 +1,5 @@
 #include "../include/HandleRegister.h"
 
-// TODO response processing method
 
 void HandleRegister::initiateRegistration() {
 

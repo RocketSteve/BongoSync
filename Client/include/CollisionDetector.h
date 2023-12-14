@@ -7,6 +7,10 @@
 #include <filesystem>
 #include "HashCalculator.h"
 
+// TODO Needs a refactor to:
+// 1. TreeManager
+// 2. PersistanceManager
+
 class MerkleNode {
 public:
     std::string hash;

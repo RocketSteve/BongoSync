@@ -1,6 +1,8 @@
 #ifndef FILEWATCHER_H
 #define FILEWATCHER_H
 
+// TODO add a stop method to bongo break
+
 #include <uv.h>
 #include <string>
 #include <functional>

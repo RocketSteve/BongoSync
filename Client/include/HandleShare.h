@@ -1,6 +1,8 @@
 #ifndef CLIENT_HANDLESHARE_H
 #define CLIENT_HANDLESHARE_H
 
+// TODO implement share
+
 #include <string>
 
 class HandleShare {
