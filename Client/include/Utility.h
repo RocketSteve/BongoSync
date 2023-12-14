@@ -5,7 +5,13 @@
 #include <termios.h>
 #include <unistd.h>
 #include <iostream>
-#include <bcrypt/BCrypt.hpp>
+#include <nlohmann/json.hpp>
+#include <openssl/evp.h>
+#include <sstream>
+#include <iomanip>
+#include <filesystem>
+#include <fstream>
+
 
 
 class Utility {
@@ -15,6 +21,7 @@ public:
     static std::string getHostname();
     static std::string getEmailFromConfig();
     static std::string hashPassword(const std::string& password);
+    static std::string getTreeHash();
     static bool confirmPassword(const std::string& password);
 };
 

@@ -24,8 +24,38 @@ std::string Utility::getEmailFromConfig() {
 }
 
 std::string Utility::hashPassword(const std::string& password) {
-    return BCrypt::generateHash(password, BCrypt::getRandomSalt());
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    if (context == nullptr) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX");
+    }
+
+    const EVP_MD* algorithm = EVP_sha256();
+    if (!EVP_DigestInit_ex(context, algorithm, nullptr)) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to initialize digest context");
+    }
+
+    if (!EVP_DigestUpdate(context, password.c_str(), password.size())) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to update digest");
+    }
+
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int lengthOfHash = 0;
+    if (!EVP_DigestFinal_ex(context, hash, &lengthOfHash)) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to finalize digest");
+    }
+
+    std::stringstream ss;
+    for (unsigned int i = 0; i < lengthOfHash; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+
+    EVP_MD_CTX_free(context);
+    return ss.str();
 }
+
 
 std::string Utility::promptForPassword() {
     std::string password;
@@ -65,4 +95,19 @@ bool Utility::confirmPassword(const std::string& password) {
     std::cout << std::endl;
 
     return password == confirmPassword;
+}
+
+std::string Utility::getTreeHash() {
+    std::string hostname = Utility::getHostname();
+    std::string bongoDirectory = std::filesystem::path(getenv("HOME")) / ".bongo";
+    std::string hashFilePath = bongoDirectory + "/" + hostname + ".hash";
+
+    std::ifstream hashFile(hashFilePath);
+    if (!hashFile.is_open()) {
+        throw std::runtime_error("Failed to open hash file: " + hashFilePath);
+    }
+
+    std::stringstream buffer;
+    buffer << hashFile.rdbuf();
+    return buffer.str();
 }
