@@ -3,6 +3,11 @@
 
 #include <string>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fstream>
+
 
 class ServerCommunicator {
 public:
@@ -18,6 +23,8 @@ public:
     bool connectToServer();
     bool isConnectedToServer() const { return isConnected; }
     bool sendMessage(const std::string& message);
+    bool receiveMessage(std::string& outMessage);
+    bool receiveFile(const std::string& filePath);
     bool sendFile(const std::string& filePath);
 
 
