@@ -1,6 +1,9 @@
 #ifndef CLIENT_HANDLEBREAK_H
 #define CLIENT_HANDLEBREAK_H
 
+#include "../include/FileWatcher.h"
+#include "../include/ServerCommunicator.h"
+
 class HandleBreak {
 public:
     void initiateBreak();
