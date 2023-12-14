@@ -1,13 +1,14 @@
-#ifndef CLIENT_HANDLESHARE_H
-#define CLIENT_HANDLESHARE_H
+#ifndef HANDLE_UNSHARE_H
+#define HANDLE_UNSHARE_H
 
 #include <string>
+#include <iostream>
 
 class HandleUnshare {
 public:
-    void initiateUnshare(std::string& email);
+    void initiateUnshare(const std::string& email);
 private:
-    bool checkWithServer(std::string& email);
+    bool checkWithServer(const std::string& email);
 };
 
-#endif //CLIENT_HANDLESHARE_H
+#endif // HANDLE_UNSHARE_H

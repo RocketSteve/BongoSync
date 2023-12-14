@@ -1,7 +1,8 @@
 #include "../include/HandleUnshare.h"
-#include <iostream>
 
-void HandleUnshare::initiateUnshare(std::string& email) {
+// TODO implement this class
+
+void HandleUnshare::initiateUnshare(const std::string& email) {
     // Implementation of unsharing
 
     if (checkWithServer(email)) {
@@ -11,7 +12,7 @@ void HandleUnshare::initiateUnshare(std::string& email) {
     }
 }
 
-bool HandleUnshare::checkWithServer(std::string& email) {
+bool HandleUnshare::checkWithServer(const std::string& email) {
     // Implementation of checking with server
     bool response;
 
