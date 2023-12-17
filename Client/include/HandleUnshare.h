@@ -5,6 +5,7 @@
 
 #include <string>
 #include <iostream>
+#include "Utility.h"
 
 class HandleUnshare {
 public:

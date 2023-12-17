@@ -5,6 +5,7 @@
 
 #include "../include/FileWatcher.h"
 #include "../include/ServerCommunicator.h"
+#include "../include/Utility.h"
 
 class HandleBreak {
 public:

@@ -23,6 +23,44 @@ std::string Utility::getEmailFromConfig() {
     return j["email"];
 }
 
+bool Utility::configExists() {
+    std::cout << "Checking if config exists ...\n";
+    if (std::filesystem::exists(std::string(getenv("HOME")) + "/.bongo/config.json")) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool Utility::isLoggedIn() {
+    std::cout << "Checking if user is logged in ...\n";
+    if (std::filesystem::exists(std::string(getenv("HOME")) + "/.bongo/config.json")) {
+        std::ifstream configFile;
+        configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
+        nlohmann::json j;
+        configFile >> j;
+        if (j["isLoggedIn"]) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+void Utility::LogIn() {
+    std::cout << "Logging in ...\n";
+    std::ifstream configFile;
+    configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
+    nlohmann::json j;
+    configFile >> j;
+    j["isLoggedIn"] = true;
+    std::ofstream o(std::string(getenv("HOME")) + "/.bongo/config.json");
+    o << std::setw(4) << j << std::endl;
+
+}
+
 std::string Utility::hashPassword(const std::string& password) {
     EVP_MD_CTX* context = EVP_MD_CTX_new();
     if (context == nullptr) {

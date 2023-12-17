@@ -4,6 +4,7 @@
 // TODO implement share
 
 #include <string>
+#include "Utility.h"
 
 class HandleShare {
 public:

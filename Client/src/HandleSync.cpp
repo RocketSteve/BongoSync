@@ -2,6 +2,11 @@
 
 void HandleSync::initiateSync() {
 
+    if (!Utility::isLoggedIn()) {
+        std::cout << "Not logged in, please start the application\n";
+        return;
+    }
+
     std::string hostname = Utility::getHostname();
     std::string treeHash = Utility::getTreeHash();
 
