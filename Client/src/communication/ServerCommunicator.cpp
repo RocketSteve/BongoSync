@@ -170,3 +170,16 @@ bool ServerCommunicator::receiveFile(const std::string& filePath) {
     }
     return true;
 }
+
+
+void ServerCommunicator::closeConnection() {
+    if (isConnected) {
+        close(sockfd); // Close the socket
+        isConnected = false;
+    }
+
+    // If using epoll, you might also want to close the epoll file descriptor
+    if (epollFd != -1) {
+        close(epollFd);
+    }
+}

@@ -40,17 +40,17 @@ bool HandleStart::validateWithServer(const std::string& password) {
         return false;
     }
 
-    auto responseJson = nlohmann::json::parse(responseStr);
-    bool isSuccess = responseJson["success"];
-    std::string message = responseJson["message"];
+    try {
+        auto responseJson = nlohmann::json::parse(responseStr);
+        bool isSuccess = responseJson.value("success", false);
+        std::string message = responseJson.value("message", "");
 
-    if (!isSuccess) {
         std::cout << "Server response: " << message << "\n";
+        return isSuccess;
+    } catch (const nlohmann::json::parse_error& e) {
+        std::cerr << "JSON parsing error: " << e.what() << "\n";
         return false;
     }
-
-    std::cout << "Server response: " << message << "\n";
-    return true;
 }
 
 

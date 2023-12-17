@@ -10,7 +10,6 @@
 // Forward declarations of functions for each command
 void handleRegister();
 void handleStart();
-void handleSync();
 void handleShare(const std::string& email);
 void handleUnshare(const std::string& email);
 void handleBreak();
@@ -25,7 +24,6 @@ int main(int argc, char** argv) {
     std::map<std::string, std::function<void()>> commands = {
             {"register", handleRegister},
             {"start", handleStart},
-            {"sync", handleSync},
             {"break", handleBreak}
     };
 
@@ -60,11 +58,6 @@ void handleStart() {
     std::cout << "Handling start command...\n";
     HandleStart startHandler;
     startHandler.initiateStart();
-}
-
-void handleSync() {
-    std::cout << "Handling sync command...\n";
-    // Implementation for sync
 }
 
 void handleShare(const std::string& email) {

@@ -8,12 +8,6 @@
 
 class MerkleTree {
 public:
-    MerkleTree();
-    ~MerkleTree();
-    void buildTree(const std::string& directoryPath);
-    std::string getTreeHash() const;
-    std::shared_ptr<MerkleTree::Node> getRoot() const; // Added getter for root
-
     struct Node {
         std::string hash;
         std::string filePath; // Store file path for leaf nodes
@@ -21,6 +15,14 @@ public:
         std::shared_ptr<Node> right;
         Node(const std::string& hash, const std::string& filePath = "") : hash(hash), filePath(filePath), left(nullptr), right(nullptr) {}
     };
+
+
+    MerkleTree();
+    ~MerkleTree();
+    void buildTree(const std::string& directoryPath);
+    std::string getTreeHash() const;
+    std::shared_ptr<MerkleTree::Node> getRoot() const; // Added getter for root
+
 
 private:
 

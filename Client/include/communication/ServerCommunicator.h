@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fstream>
+#include <sys/epoll.h>
 
 
 class ServerCommunicator {
@@ -32,19 +33,25 @@ public:
     bool receiveFile(const std::string& filePath);
     bool sendFile(const std::string& filePath);
 
+    void closeConnection();
 
 private:
     ServerCommunicator(const std::string& serverIP, int serverPort); // Private constructor
     ~ServerCommunicator();
 
 
+    int sockfd;  // Socket file descriptor
+    struct sockaddr_in serverAddr;
+    bool isConnected;
+
+    // Epoll related members
+    int epollFd;
+    struct epoll_event event;
+    static constexpr int MAX_EVENTS = 10;
 
     std::string serverIP;
     int serverPort;
-    int sockfd;
-    struct sockaddr_in serverAddr;
 
-    bool isConnected;
 };
 
 #endif // SERVERCOMMUNICATOR_H

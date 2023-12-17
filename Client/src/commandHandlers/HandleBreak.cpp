@@ -17,5 +17,5 @@ void HandleBreak::stopFileWatcher() {
 
 void HandleBreak::closeConnection() {
     auto& serverCommunicator = ServerCommunicator::getInstance();
-    serverCommunicator();
+    serverCommunicator.closeConnection();
 }

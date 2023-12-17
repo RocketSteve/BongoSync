@@ -1,5 +1,7 @@
 #include "../../include/commandHandlers/HandleRegister.h"
 
+//TODO implement user exists message from server
+
 
 void HandleRegister::initiateRegistration() {
 
@@ -15,11 +17,12 @@ void HandleRegister::initiateRegistration() {
         password = Utility::promptForPassword();
     } while (!Utility::confirmPassword(password));
 
-    if (checkWithServer(email, password, hostname)) {
+    if (!checkWithServer(email, password, hostname)) {
         std::cout << "User already exists, please try again.\n";
         initiateRegistration();
     } else {
         createConfigFile(email, hostname);
+        std::cout << "User registered successfully.\n";
     }
 }
 
