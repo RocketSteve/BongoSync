@@ -1,15 +1,14 @@
 #ifndef CLIENT_HANDLEBREAK_H
 #define CLIENT_HANDLEBREAK_H
 
-// TODO add file watcher stop
-
-#include "../include/FileWatcher.h"
-#include "../include/ServerCommunicator.h"
-#include "../include/Utility.h"
+#include "../fileServices/FileWatcher.h"
+#include "../communication/ServerCommunicator.h"
+#include "../Utility.h"
 
 class HandleBreak {
 public:
     void initiateBreak();
+
 private:
     void stopFileWatcher();
     void closeConnection();

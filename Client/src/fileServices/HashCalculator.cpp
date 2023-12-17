@@ -1,4 +1,4 @@
-#include "../include/HashCalculator.h"
+#include "../../include/fileServices/HashCalculator.h"
 
 
 std::string HashCalculator::calculateHash(const std::string& input) {

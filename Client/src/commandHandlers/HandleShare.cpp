@@ -1,4 +1,4 @@
-#include "../include/HandleShare.h"
+#include "../../include/commandHandlers/HandleShare.h"
 #include <iostream>
 
 void HandleShare::initiateShare(const std::string& email) {

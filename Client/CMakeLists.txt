@@ -17,30 +17,36 @@ include_directories(/home/simoszy/Documents/BongoSync/lib/BLAKE3/c)
 
 
 add_executable(Client src/main.cpp
-        include/FileWatcher.h
-        src/FileWatcher.cpp
-        include/HashCalculator.h
-        src/HashCalculator.cpp
-        include/HandleRegister.h
-        src/HandleRegister.cpp
-        include/HandleStart.h
-        include/HandleSync.h
-        include/HandleShare.h
-        include/HandleUnshare.h
-        src/HandleStart.cpp
-        src/HandleSync.cpp
-        src/HandleShare.cpp
-        src/HandleUnshare.cpp
-        include/HandleBreak.h
-        include/ServerCommunicator.h
-        src/ServerCommunicator.cpp
-        include/MessageBuilder.h
-        src/MessageBuilder.cpp
+        include/fileServices/FileWatcher.h
+        src/fileServices/FileWatcher.cpp
+        include/fileServices/HashCalculator.h
+        src/fileServices/HashCalculator.cpp
+        include/commandHandlers/HandleRegister.h
+        src/commandHandlers/HandleRegister.cpp
+        include/commandHandlers/HandleStart.h
+        include/commandHandlers/HandleSync.h
+        include/commandHandlers/HandleShare.h
+        include/commandHandlers/HandleUnshare.h
+        src/commandHandlers/HandleStart.cpp
+        src/commandHandlers/HandleSync.cpp
+        src/commandHandlers/HandleShare.cpp
+        src/commandHandlers/HandleUnshare.cpp
+        include/commandHandlers/HandleBreak.h
+        include/communication/ServerCommunicator.h
+        src/communication/ServerCommunicator.cpp
+        include/communication/MessageBuilder.h
+        src/communication/MessageBuilder.cpp
         src/Utility.cpp
-        include/MessageCreator.h
-        include/CollisionDetector.h
-        src/HandleBreak.cpp
-        src/CollisionDetector.cpp
+        include/communication/MessageCreator.h
+        src/commandHandlers/HandleBreak.cpp
+        include/fileServices/MerkleTree.h
+        src/fileServices/MerkleTree.cpp
+        include/fileServices/FileChangeDetector.h
+        src/fileServices/FileChangeDetector.cpp
+        include/fileServices/ConflictResolver.h
+        src/fileServices/ConflictResolver.cpp
+        include/fileServices/FileServices.h
+        src/fileServices/FileServices.cpp
 )
 
 # Link libraries

@@ -61,6 +61,17 @@ void Utility::LogIn() {
 
 }
 
+void Utility::LogOut() {
+    std::cout << "Logging out ...\n";
+    std::ifstream configFile;
+    configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
+    nlohmann::json j;
+    configFile >> j;
+    j["isLoggedIn"] = false;
+    std::ofstream o(std::string(getenv("HOME")) + "/.bongo/config.json");
+    o << std::setw(4) << j << std::endl;
+}
+
 std::string Utility::hashPassword(const std::string& password) {
     EVP_MD_CTX* context = EVP_MD_CTX_new();
     if (context == nullptr) {
@@ -135,17 +146,10 @@ bool Utility::confirmPassword(const std::string& password) {
     return password == confirmPassword;
 }
 
-std::string Utility::getTreeHash() {
+
+std::string Utility::getDefaultDirectory() {
     std::string hostname = Utility::getHostname();
     std::string bongoDirectory = std::filesystem::path(getenv("HOME")) / ".bongo";
-    std::string hashFilePath = bongoDirectory + "/" + hostname + ".hash";
-
-    std::ifstream hashFile(hashFilePath);
-    if (!hashFile.is_open()) {
-        throw std::runtime_error("Failed to open hash file: " + hashFilePath);
-    }
-
-    std::stringstream buffer;
-    buffer << hashFile.rdbuf();
-    return buffer.str();
+    std::string directoryPath = bongoDirectory + "/" + hostname;
+    return directoryPath;
 }

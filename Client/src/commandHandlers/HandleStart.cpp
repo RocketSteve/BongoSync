@@ -1,26 +1,17 @@
-#include "../include/HandleStart.h"
+#include "../../include/commandHandlers/HandleStart.h"
 
 
 
 void HandleStart::initiateStart() {
-    if (configExists()) {
+    if (Utility::configExists()) {
         std::string password = Utility::promptForPassword();
         if (validateWithServer(password)) {
-            getLatestVersion();
+            Utility::LogIn();
             startFileServices();
         }
     } else {
         std::cout << "No config found, please run bongo register\n";
         return;
-    }
-}
-
-bool HandleStart::configExists() {
-    std::cout << "Checking if config exists ...\n";
-    if (std::filesystem::exists(std::string(getenv("HOME")) + "/.bongo/config.json")) {
-        return true;
-    } else {
-        return false;
     }
 }
 
@@ -49,7 +40,6 @@ bool HandleStart::validateWithServer(const std::string& password) {
         return false;
     }
 
-    // Parse the JSON response
     auto responseJson = nlohmann::json::parse(responseStr);
     bool isSuccess = responseJson["success"];
     std::string message = responseJson["message"];
@@ -63,12 +53,20 @@ bool HandleStart::validateWithServer(const std::string& password) {
     return true;
 }
 
+
 void HandleStart::startFileServices() {
-    // Implementation of starting file services
     std::cout << "Starting file services ...\n";
+    std::string directoryPath = Utility::getDefaultDirectory();
+    startFileWatcherAndSync(directoryPath);
 }
 
-void HandleStart::getLatestVersion() {
-    // Implementation of getting latest version
-    std::cout << "Getting latest version ...\n";
+void HandleStart::startFileWatcherAndSync(const std::string& directoryPath) {
+    HandleSync syncHandler(directoryPath);
+    fileWatcherThread = std::thread([&]() {
+        syncHandler.initiateSync(); // Initiate initial sync
+        FileWatcher& watcher = FileWatcher::getInstance();
+        watcher.initialize(directoryPath);
+        watcher.start(); // This will run in the background
+    });
 }
+

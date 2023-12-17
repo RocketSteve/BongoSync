@@ -1,7 +1,11 @@
-#include "../include/HandleRegister.h"
+#include "../../include/commandHandlers/HandleRegister.h"
 
 
 void HandleRegister::initiateRegistration() {
+
+    if (Utility::configExists()) {
+        std::cout << "This computer is already registered, please start the application with:\n bongo start\n";
+    }
 
     std::string email = Utility::promptForEmail();
     std::string password;

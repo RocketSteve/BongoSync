@@ -34,6 +34,8 @@ private:
     ServerCommunicator(const std::string& serverIP, int serverPort); // Private constructor
     ~ServerCommunicator();
 
+
+
     std::string serverIP;
     int serverPort;
     int sockfd;

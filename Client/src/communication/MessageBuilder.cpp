@@ -1,4 +1,4 @@
-#include "../include/MessageBuilder.h"
+#include "../../include/communication/MessageBuilder.h"
 
 MessageBuilder& MessageBuilder::setEmail(const std::string& email) {
     this->email = email;
@@ -43,4 +43,16 @@ std::string MessageBuilder::buildAskIfLatestMessage() const {
     msg["action"] = "check_latest";
     msg["data"]["tree_hash"] = treeHash;
     return msg.dump();
+}
+
+MessageBuilder& MessageBuilder::setFilePath(const std::string& filePath) {
+    this->filePath = filePath;
+    return *this;
+}
+
+std::string MessageBuilder::buildFileRequestMessage() const {
+    nlohmann::json messageJson;
+    messageJson["type"] = "file_request";
+    messageJson["file_path"] = filePath;
+    return messageJson.dump();
 }

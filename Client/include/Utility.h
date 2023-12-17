@@ -21,11 +21,13 @@ public:
     static std::string getHostname();
     static std::string getEmailFromConfig();
     static std::string hashPassword(const std::string& password);
-    static std::string getTreeHash();
+    static std::string getDefaultDirectory();
+
     static bool confirmPassword(const std::string& password);
     static bool configExists();
     static bool isLoggedIn();
     static void LogIn();
+    static void LogOut();
 };
 
 #endif //CLIENT_UTILITY_H

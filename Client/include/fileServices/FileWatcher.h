@@ -1,34 +1,31 @@
 #ifndef FILEWATCHER_H
 #define FILEWATCHER_H
 
-// TODO add a stop method to bongo break
-
 #include <uv.h>
 #include <string>
-#include <functional>
-#include "../include/CollisionDetector.h"
-
-class CollisionDetector;  // Forward declaration
+#include "FileChangeDetector.h"
 
 class FileWatcher {
 public:
+    explicit FileWatcher(const std::string& directoryPath);
+    ~FileWatcher();
+
     static FileWatcher& getInstance();
-    FileWatcher(const FileWatcher&) = delete;            // Delete copy constructor
+    void initialize(const std::string& directoryPath);
+    FileWatcher(const FileWatcher&) = delete; // Delete copy constructor
     FileWatcher& operator=(const FileWatcher&) = delete; // Delete copy assignment operator
 
-    void start(const std::string& path, CollisionDetector& collisionDetector);
+    void start();
     void stop();
 
 private:
-    FileWatcher();  // Private constructor
-    ~FileWatcher(); // Destructor
-
+    FileWatcher(); // Private default constructor
     static void onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status);
 
     uv_loop_t* loop;
     uv_fs_event_t fsEvent;
     std::string directoryToWatch;
-    CollisionDetector* collisionDetector;
+    FileChangeDetector *fileChangeDetector; // Now initialized in the constructor
     bool isRunning;
 };
 

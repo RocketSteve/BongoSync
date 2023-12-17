@@ -1,10 +1,11 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include "../include/HandleRegister.h"
-#include "../include/HandleStart.h"
-#include "../include/HandleShare.h"
-#include "../include/HandleUnshare.h"
+#include "../include/commandHandlers/HandleRegister.h"
+#include "../include/commandHandlers/HandleStart.h"
+#include "../include/commandHandlers/HandleShare.h"
+#include "../include/commandHandlers/HandleUnshare.h"
+#include "../include/commandHandlers/HandleBreak.h"
 
 // Forward declarations of functions for each command
 void handleRegister();
@@ -59,7 +60,6 @@ void handleStart() {
     std::cout << "Handling start command...\n";
     HandleStart startHandler;
     startHandler.initiateStart();
-    // Implementation for start
 }
 
 void handleSync() {
@@ -81,5 +81,6 @@ void handleUnshare(const std::string& email) {
 
 void handleBreak() {
     std::cout << "Handling break command...\n";
-    // Implementation for break (logout)
+    HandleBreak breakHandler;
+    breakHandler.initiateBreak();
 }

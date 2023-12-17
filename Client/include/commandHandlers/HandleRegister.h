@@ -11,10 +11,10 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
-#include "../include/Utility.h"
-#include "../include/ServerCommunicator.h"
-#include "../include/MessageBuilder.h"
-#include "../include/MessageCreator.h"
+#include "../Utility.h"
+#include "../communication/ServerCommunicator.h"
+#include "../communication/MessageBuilder.h"
+#include "../communication/MessageCreator.h"
 
 class HandleRegister {
 public:
