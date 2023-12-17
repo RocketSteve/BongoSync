@@ -18,6 +18,9 @@ public:
         return instance;
     }
 
+    void setupEpoll();
+    bool waitForData();
+
     // Delete the copy constructor and copy assignment operator
     ServerCommunicator(const ServerCommunicator&) = delete;
     ServerCommunicator& operator=(const ServerCommunicator&) = delete;

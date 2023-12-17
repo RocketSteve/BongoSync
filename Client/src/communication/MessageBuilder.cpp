@@ -56,3 +56,10 @@ std::string MessageBuilder::buildFileRequestMessage() const {
     messageJson["file_path"] = filePath;
     return messageJson.dump();
 }
+
+std::string MessageBuilder::buildDeleteMessage() const {
+    nlohmann::json messageJson;
+    messageJson["type"] = "delete";
+    messageJson["file_path"] = filePath;
+    return messageJson.dump();
+}

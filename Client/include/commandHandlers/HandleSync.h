@@ -11,6 +11,8 @@
 #include "../fileServices/FileWatcher.h"
 #include <iostream>
 #include <vector>
+#include <string>
+#include <thread>
 
 class HandleSync {
 public:
@@ -30,9 +32,12 @@ private:
     void startFileWatcherIfNeeded();
 
     void sendChangedFilesToServer(const std::vector<FileChange>& changes);
+    void sendDeleteMessageToServer(const std::string& filePath);
     void sendFileToServer(const std::string& filePath);
 
-    void handleConflict(const std::string& conflictedFile);
+    void listenForUpdates();
+
+    void handleRemoteUpdate(const nlohmann::json& updateInfo);
     std::string directoryPath;
 };
 

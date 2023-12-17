@@ -22,6 +22,9 @@ void HandleSync::initiateSync() {
     } else {
         std::cout << "Error during synchronization.\n";
     }
+
+    std::thread updateListenerThread(&HandleSync::listenForUpdates, this);
+    updateListenerThread.detach();
 }
 
 bool HandleSync::checkWithServer(const std::string& currentHash, const std::string& hostname) {
@@ -62,7 +65,7 @@ void HandleSync::processServerSyncResponse(const std::string& response) {
             std::cout << "Local copy is up to date.\n";
             startFileWatcherIfNeeded();
         } else if (status == "REMOTE_UPDATE") {
-            handleRemoteUpdate(responseJson); // Handle the server's update notification
+            handleRemoteUpdate(responseJson);
         } else {
             std::cerr << "Unknown status received from server: " << status << "\n";
         }
@@ -114,8 +117,8 @@ void HandleSync::sendDeleteMessageToServer(const std::string& filePath) {
 
 
 void HandleSync::handleRemoteUpdate(const nlohmann::json& updateInfo) {
-    // Assuming updateInfo contains the remote Merkle Tree or a list of changed files
-    // For simplicity, let's assume it's a list of file paths that have changed
+    ServerCommunicator& serverCommunicator = ServerCommunicator::getInstance();
+
     std::vector<std::string> remoteChangedFiles = updateInfo["changed_files"];
 
     merkleTree.buildTree(directoryPath);
@@ -128,16 +131,36 @@ void HandleSync::handleRemoteUpdate(const nlohmann::json& updateInfo) {
                                       });
 
         if (isConflict) {
+            // Resolve conflict on the local copy
             conflictResolver.resolveConflict(remoteFile);
+
+            // Download and save the remote file with a different name
+            std::string receivedFilePath = remoteFile + "_remote";
+            serverCommunicator.receiveFile(receivedFilePath);
         } else {
-            serverCommunicator.receiveFile(remoteFile); // Download file from server
+            // No conflict, directly download the file
+            serverCommunicator.receiveFile(remoteFile);
         }
     }
 }
+
 
 void HandleSync::startFileWatcherIfNeeded() {
     FileWatcher& watcher = FileWatcher::getInstance();
     watcher.start();
 }
 
-// ... Other methods ...
+void HandleSync::listenForUpdates() {
+    ServerCommunicator& communicator = ServerCommunicator::getInstance();
+
+    while (true) {
+        std::string message;
+        if (communicator.receiveMessage(message)) {
+            nlohmann::json updateInfo = nlohmann::json::parse(message);
+            handleRemoteUpdate(updateInfo);
+        } else {
+            // Handle the case where message reception failed
+            break;
+        }
+    }
+}

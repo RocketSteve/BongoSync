@@ -16,7 +16,7 @@ public:
     std::string buildRegistrationMessage() const;
     std::string buildLoginMessage() const;
     std::string buildAskIfLatestMessage() const;
-    std::string build
+    std::string buildDeleteMessage() const;
 
 private:
     std::string email;

@@ -1,6 +1,7 @@
 #include "../../include/communication/ServerCommunicator.h"
 #include <stdexcept>
 #include <iostream>
+#include <sys/epoll.h>
 
 ServerCommunicator::ServerCommunicator(const std::string& ip, int port)
         : serverIP(ip), serverPort(port), isConnected(false) {
@@ -12,6 +13,8 @@ ServerCommunicator::ServerCommunicator(const std::string& ip, int port)
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(serverPort);
     inet_pton(AF_INET, serverIP.c_str(), &serverAddr.sin_addr);
+
+    setupEpoll();
 }
 
 ServerCommunicator::~ServerCommunicator() {
@@ -46,11 +49,29 @@ bool ServerCommunicator::sendMessage(const std::string& message) {
     return true;
 }
 
-#include "../../include/communication/ServerCommunicator.h"
-#include <fstream>
-#include <iostream>
+void ServerCommunicator::setupEpoll() {
+    epollFd = epoll_create1(0);
+    if (epollFd == -1) {
+        throw std::runtime_error("Failed to create epoll file descriptor");
+    }
 
-// ... other methods ...
+    event.events = EPOLLIN;  // Interested in input events
+    event.data.fd = sockfd;
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, sockfd, &event) == -1) {
+        throw std::runtime_error("Failed to add socket to epoll");
+    }
+}
+
+bool ServerCommunicator::waitForData() {
+    struct epoll_event events[MAX_EVENTS];
+    int n = epoll_wait(epollFd, events, MAX_EVENTS, -1);
+    if (n == -1) {
+        std::cerr << "Epoll wait error\n";
+        return false;
+    }
+    return true; // Data is ready to be read
+}
+
 
 bool ServerCommunicator::sendFile(const std::string& filePath) {
     if (!isConnected) return false;
@@ -94,7 +115,7 @@ bool ServerCommunicator::sendFile(const std::string& filePath) {
 
 
 bool ServerCommunicator::receiveMessage(std::string& outMessage) {
-    if (!isConnected) return false;
+    if (!isConnected || !waitForData()) return false;
 
     const size_t bufferSize = 1024;
     char buffer[bufferSize];
@@ -119,7 +140,7 @@ bool ServerCommunicator::receiveMessage(std::string& outMessage) {
 }
 
 bool ServerCommunicator::receiveFile(const std::string& filePath) {
-    if (!isConnected) return false;
+    if (!isConnected || !waitForData()) return false;
 
     std::ofstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
