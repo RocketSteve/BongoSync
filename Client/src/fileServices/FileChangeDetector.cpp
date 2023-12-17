@@ -1,4 +1,6 @@
 #include "../../include/fileServices/FileChangeDetector.h"
+#include <stack>
+#include <unordered_set>
 
 
 FileChange::FileChange(std::string filePath, Type changeType) : filePath(std::move(filePath)), changeType(changeType) {}
@@ -30,7 +32,7 @@ std::vector<FileChange> FileChangeDetector::detectChanges() {
 
 std::vector<FileChange> FileChangeDetector::compareTrees() {
     std::vector<FileChange> changes;
-    std::stack<std::pair<MerkleTree::Node*, MerkleTree::Node*>> stack;
+    std::stack<std::pair<std::shared_ptr<MerkleTree::Node>, std::shared_ptr<MerkleTree::Node>>> stack;
 
     stack.push({oldMerkleTree.getRoot(), newMerkleTree.getRoot()});
 
@@ -43,18 +45,30 @@ std::vector<FileChange> FileChangeDetector::compareTrees() {
         }
 
         if (!oldNode || !newNode || oldNode->hash != newNode->hash) {
-            if (oldNode && !newNode) {
-                changes.push_back(FileChange(oldNode->filePath, FileChange::Type::Deleted));
-            } else if (!oldNode && newNode) {
-                changes.push_back(FileChange(newNode->filePath, FileChange::Type::Added));
-            } else {
-                changes.push_back(FileChange(newNode->filePath, FileChange::Type::Modified));
-            }
-            break;
+            FileChange::Type changeType = !oldNode ? FileChange::Type::Added :
+                                          !newNode ? FileChange::Type::Deleted : FileChange::Type::Modified;
+
+            changes.push_back(FileChange(newNode ? newNode->path : oldNode->path, changeType));
+            continue;
         }
 
-        stack.push({oldNode->left.get(), newNode->left.get()});
-        stack.push({oldNode->right.get(), newNode->right.get()});
+        std::unordered_set<std::string> oldPaths, newPaths;
+        for (const auto& child : oldNode->children) oldPaths.insert(child->path);
+        for (const auto& child : newNode->children) newPaths.insert(child->path);
+
+        for (const auto& child : oldNode->children) {
+            if (newPaths.count(child->path) == 0) {
+                changes.push_back(FileChange(child->path, FileChange::Type::Deleted));
+            } else {
+                stack.push({child, newNode->findChildByPath(child->path)});
+            }
+        }
+
+        for (const auto& child : newNode->children) {
+            if (oldPaths.count(child->path) == 0) {
+                changes.push_back(FileChange(child->path, FileChange::Type::Added));
+            }
+        }
     }
 
     return changes;
