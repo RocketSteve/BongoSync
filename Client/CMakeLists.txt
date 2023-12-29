@@ -5,12 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
 
+# Fetch nlohmann_json
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG v3.10.5
 )
-
 FetchContent_MakeAvailable(json)
 
 # Fetch GTest
@@ -27,22 +27,24 @@ include(GoogleTest)
 FetchContent_Declare(
         openssl
         GIT_REPOSITORY https://github.com/openssl/openssl.git
-        GIT_TAG OpenSSL_1_1_1k # Replace with the desired OpenSSL version
+        GIT_TAG OpenSSL_1_1_1k
 )
-FetchContent_GetProperties(openssl)
-if(NOT openssl_POPULATED)
-    FetchContent_Populate(openssl)
-    add_subdirectory(${openssl_SOURCE_DIR} ${openssl_BINARY_DIR})
-endif()
+FetchContent_MakeAvailable(openssl)
+
+# Fetch BLAKE3
+FetchContent_Declare(
+        blake3
+        GIT_REPOSITORY https://github.com/BLAKE3-team/BLAKE3.git
+        GIT_TAG some_specific_tag_or_branch # Replace with a specific tag or branch
+)
+FetchContent_MakeAvailable(blake3)
 
 # Include directories
 include_directories(include)
-include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${nlohmann_json_INCLUDE_DIRS})
-include_directories(/usr/local/include)
-include_directories(/usr/include/gtest)
-include_directories(/home/simoszy/Documents/BongoSync/lib/BLAKE3/c)
-link_directories(/usr/lib)
+include_directories(${openssl_SOURCE_DIR}/include)
+include_directories(${blake3_SOURCE_DIR}/c) # Assuming this is the correct path
+# Include other necessary directories
 
 # Source files
 file(GLOB_RECURSE CLIENT_SOURCES "src/*.cpp")
@@ -56,8 +58,8 @@ target_link_libraries(Client
         OpenSSL::SSL
         OpenSSL::Crypto
         nlohmann_json::nlohmann_json
+        blake3 # Assuming this is the correct target name
         uv
-        /home/simoszy/Documents/BongoSync/lib/BLAKE3/c/build/libblake3.a
         gtest
         gtest_main
         pthread
@@ -71,15 +73,16 @@ enable_testing()
 add_executable(ClientTests
         tests/test.cpp
         tests/MerkleTreeTest.cpp
-        ${CLIENT_SOURCES} # Add this if tests require the main application's sources
+        ${CLIENT_SOURCES}
 )
 
-target_link_libraries(Client
+# Link libraries for Test Executable
+target_link_libraries(ClientTests
         OpenSSL::SSL
         OpenSSL::Crypto
         nlohmann_json::nlohmann_json
+        blake3 # Assuming this is the correct target name
         uv
-        /home/simoszy/Documents/BongoSync/lib/BLAKE3/c/build/libblake3.a
         gtest
         gtest_main
         pthread
@@ -88,4 +91,3 @@ target_link_libraries(Client
 
 # Add tests
 gtest_discover_tests(ClientTests)
-
