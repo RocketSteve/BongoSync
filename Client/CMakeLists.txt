@@ -3,10 +3,37 @@ project(Client)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Find packages
-find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json 3.2.0 REQUIRED)
-find_package(GTest REQUIRED) # Add this line to find GTest
+include(FetchContent)
+
+FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.10.5
+)
+
+FetchContent_MakeAvailable(json)
+
+# Fetch GTest
+FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG release-1.11.0
+)
+FetchContent_MakeAvailable(googletest)
+
+include(GoogleTest)
+
+# Fetch OpenSSL
+FetchContent_Declare(
+        openssl
+        GIT_REPOSITORY https://github.com/openssl/openssl.git
+        GIT_TAG OpenSSL_1_1_1k # Replace with the desired OpenSSL version
+)
+FetchContent_GetProperties(openssl)
+if(NOT openssl_POPULATED)
+    FetchContent_Populate(openssl)
+    add_subdirectory(${openssl_SOURCE_DIR} ${openssl_BINARY_DIR})
+endif()
 
 # Include directories
 include_directories(include)
@@ -26,7 +53,8 @@ add_executable(Client src/main.cpp ${CLIENT_SOURCES})
 
 # Link libraries
 target_link_libraries(Client
-        ${OPENSSL_LIBRARIES}
+        OpenSSL::SSL
+        OpenSSL::Crypto
         nlohmann_json::nlohmann_json
         uv
         /home/simoszy/Documents/BongoSync/lib/BLAKE3/c/build/libblake3.a
@@ -45,15 +73,16 @@ add_executable(ClientTests
         tests/MerkleTreeTest.cpp
         ${CLIENT_SOURCES} # Add this if tests require the main application's sources
 )
-# Link libraries for Test Executable
-target_link_libraries(ClientTests
-        ${GTEST_LIBRARIES}
-        ${GTEST_MAIN_LIBRARIES}
-        pthread
-        ${OPENSSL_LIBRARIES}
+
+target_link_libraries(Client
+        OpenSSL::SSL
+        OpenSSL::Crypto
         nlohmann_json::nlohmann_json
         uv
         /home/simoszy/Documents/BongoSync/lib/BLAKE3/c/build/libblake3.a
+        gtest
+        gtest_main
+        pthread
         # Add other dependencies used by your tests
 )
 
