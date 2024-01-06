@@ -1,6 +1,9 @@
-libuv
-blake3
+sudo apt-get -y install librust-blake3-dev
+sudo apt-get -t install openssl
+
+Rest should take care of itself
+
 nlohmann/json.hpp
-opensSsl
 gtest
 gmock
+libuv
