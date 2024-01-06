@@ -23,6 +23,7 @@ public:
     bool sendFile(const std::string& filePath);
     bool receiveFile(const std::string& filePath);
     void closeConnection();
+    bool isMessageReady();
 
     bool isConnectedToServer() const;
 

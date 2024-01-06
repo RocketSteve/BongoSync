@@ -131,3 +131,12 @@ bool ServerCommunicator::isConnectedToServer() const {
     return isConnected;
 }
 
+bool ServerCommunicator::isMessageReady() {
+    struct pollfd fdArray[1];
+    fdArray[0].fd = sockfd;
+    fdArray[0].events = POLLIN;
+
+    int ret = poll(fdArray, 1, 0);
+    return (ret > 0) && (fdArray[0].revents & POLLIN);
+}
+
