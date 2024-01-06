@@ -1,6 +1,8 @@
 #include "../../include/commandHandlers/HandleSync.h"
 #include <nlohmann/json.hpp>
 
+// TODO add message interpretation
+
 HandleSync::HandleSync(const std::string& directoryPath)
         : directoryPath(directoryPath),
           merkleTree(),
@@ -13,7 +15,7 @@ void HandleSync::initiateSync() {
         return;
     }
 
-    merkleTree.buildTree(directoryPath); // Build or update Merkle Tree
+    merkleTree.buildTree(directoryPath);
     std::string currentHash = merkleTree.getTreeHash();
     std::string hostname = Utility::getHostname();
 
@@ -34,45 +36,33 @@ bool HandleSync::checkWithServer(const std::string& currentHash, const std::stri
             .buildAskIfLatestMessage();
 
     auto& serverCommunicator = ServerCommunicator::getInstance();
-    if (!serverCommunicator.isConnectedToServer() && !serverCommunicator.connectToServer()) {
-        std::cerr << "Failed to connect to server for synchronization.\n";
-        return false;
-    }
 
     if (!serverCommunicator.sendMessage(syncRequestMsg)) {
         std::cerr << "Failed to send synchronization request.\n";
         return false;
     }
 
-    std::string serverResponse;
-    if (!serverCommunicator.receiveMessage(serverResponse)) {
+    // Receive the response
+    std::string responseStr;
+    if (!(responseStr = serverCommunicator.receiveMessage()).empty()) {
         std::cerr << "Failed to receive response from server.\n";
         return false;
     }
 
-    processServerSyncResponse(serverResponse);
-    return true;
-}
+    // Handle the response
+    try {
+        auto responseJson = nlohmann::json::parse(responseStr);
+        bool isSuccess = responseJson.value("success", false);
+        std::string message = responseJson.value("message", "");
 
-void HandleSync::processServerSyncResponse(const std::string& response) {
-    nlohmann::json responseJson = nlohmann::json::parse(response);
-
-    if (responseJson.contains("status")) {
-        std::string status = responseJson["status"];
-        if (status == "SYNC_NEEDED") {
-            handleLocalChanges();
-        } else if (status == "NO_SYNC_REQUIRED") {
-            std::cout << "Local copy is up to date.\n";
-            startFileWatcherIfNeeded();
-        } else if (status == "REMOTE_UPDATE") {
-            handleRemoteUpdate(responseJson);
-        } else {
-            std::cerr << "Unknown status received from server: " << status << "\n";
-        }
-    } else {
-        std::cerr << "Invalid response format received from server.\n";
+        std::cout << "Server response: " << message << "\n";
+        return isSuccess;
+    } catch (const nlohmann::json::parse_error& e) {
+        std::cerr << "JSON parsing error: " << e.what() << "\n";
+        return false;
     }
 }
+
 
 void HandleSync::handleLocalChanges() {
     auto changes = fileChangeDetector.detectChanges();
@@ -151,16 +141,25 @@ void HandleSync::startFileWatcherIfNeeded() {
 }
 
 void HandleSync::listenForUpdates() {
-    ServerCommunicator& communicator = ServerCommunicator::getInstance();
+    ServerCommunicator& serverCommunicator = ServerCommunicator::getInstance();
 
     while (true) {
-        std::string message;
-        if (communicator.receiveMessage(message)) {
-            nlohmann::json updateInfo = nlohmann::json::parse(message);
-            handleRemoteUpdate(updateInfo);
+        if (serverCommunicator.isMessageReady()) {  // Check if a message is ready
+            std::string responseStr = serverCommunicator.receiveMessage();
+            if (!responseStr.empty()) {
+                try {
+                    auto responseJson = nlohmann::json::parse(responseStr);
+                    bool isSuccess = responseJson.value("success", false);
+                    std::string message = responseJson.value("message", "");
+
+                    std::cout << "Server response: " << message << "\n";
+                } catch (const nlohmann::json::parse_error& e) {
+                    std::cerr << "JSON parsing error: " << e.what() << "\n";
+                }
+            }
         } else {
-            // Handle the case where message reception failed
-            break;
+            // Sleep for a short duration before checking again
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 }
