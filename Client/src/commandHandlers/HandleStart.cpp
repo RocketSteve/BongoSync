@@ -1,6 +1,6 @@
 #include "../../include/commandHandlers/HandleStart.h"
 
-
+//TODO message interpretation
 
 void HandleStart::initiateStart() {
     if (Utility::configExists()) {
@@ -21,25 +21,47 @@ bool HandleStart::validateWithServer(const std::string& password) {
     std::string email = Utility::getEmailFromConfig();
     std::string passwdHash = Utility::hashPassword(password);
 
+    // Create login message
     MessageBuilder messageCreator;
     std::string loginMessage = MessageCreator::create()
             .setEmail(email)
             .setPassword(passwdHash)
             .buildLoginMessage();
 
+    // Get the instance of ServerCommunicator
     auto& serverCommunicator = ServerCommunicator::getInstance();
-    if (!serverCommunicator.isConnectedToServer() && !serverCommunicator.connectToServer()) {
-        std::cerr << "Failed to connect to server\n";
+
+    // Check if already connected, if not, try to connect
+    if (!serverCommunicator.isConnectedToServer()) {
+        std::string serverIP;
+        int serverPort;
+
+        std::cout << "Enter server IP: ";
+        std::cin >> serverIP;
+
+        std::cout << "Enter server port: ";
+        std::cin >> serverPort;
+
+        if (!serverCommunicator.connectToServer(serverIP, serverPort)) {
+            std::cerr << "Failed to connect to server\n";
+            return false;
+        }
+    }
+
+    // Send the login message
+    if (!serverCommunicator.sendMessage(loginMessage)) {
+        std::cerr << "Failed to send login message.\n";
         return false;
     }
-    serverCommunicator.sendMessage(loginMessage);
 
+    // Receive the response
     std::string responseStr;
-    if (!serverCommunicator.receiveMessage(responseStr)) {
+    if (!(responseStr = serverCommunicator.receiveMessage()).empty()) {
         std::cerr << "Failed to receive response from server.\n";
         return false;
     }
 
+    // Handle the response
     try {
         auto responseJson = nlohmann::json::parse(responseStr);
         bool isSuccess = responseJson.value("success", false);
@@ -52,7 +74,6 @@ bool HandleStart::validateWithServer(const std::string& password) {
         return false;
     }
 }
-
 
 void HandleStart::startFileServices() {
     std::cout << "Starting file services ...\n";
