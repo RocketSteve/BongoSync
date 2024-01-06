@@ -1,185 +1,133 @@
-#include "../../include/communication/ServerCommunicator.h"
-#include <stdexcept>
-#include <iostream>
-#include <sys/epoll.h>
+#include "../include/communication/ServerCommunicator.h"
 
-ServerCommunicator::ServerCommunicator(const std::string& ip, int port)
-        : serverIP(ip), serverPort(port), isConnected(false) {
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        throw std::runtime_error("Failed to create socket");
-    }
 
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(serverPort);
-    inet_pton(AF_INET, serverIP.c_str(), &serverAddr.sin_addr);
-
-    setupEpoll();
+ServerCommunicator& ServerCommunicator::getInstance() {
+    static ServerCommunicator instance;
+    return instance;
 }
 
-ServerCommunicator::~ServerCommunicator() {
-    if (isConnected) {
-        close(sockfd);
-    }
-}
-
-bool ServerCommunicator::connectToServer() {
-    if (connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        isConnected = false;
-        std::cerr << "Failed to connect to server\n";
+bool ServerCommunicator::connectToServer(const std::string& serverIP, int serverPort) {
+    if (!setupSocket(serverIP, serverPort)) {
         return false;
     }
+
+    poll_fd.fd = sockfd;
+    poll_fd.events = POLLIN | POLLOUT;
+
     isConnected = true;
     return true;
 }
 
 bool ServerCommunicator::sendMessage(const std::string& message) {
-    if (!isConnected) return false;
-
-    size_t totalSent = 0;
-    size_t msgLength = message.length();
-    while (totalSent < msgLength) {
-        ssize_t sent = send(sockfd, message.c_str() + totalSent, msgLength - totalSent, 0);
-        if (sent < 0) {
-            std::cerr << "Failed to send message\n";
-            return false;
-        }
-        totalSent += sent;
-    }
-    return true;
-}
-
-void ServerCommunicator::setupEpoll() {
-    epollFd = epoll_create1(0);
-    if (epollFd == -1) {
-        throw std::runtime_error("Failed to create epoll file descriptor");
-    }
-
-    event.events = EPOLLIN;  // Interested in input events
-    event.data.fd = sockfd;
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, sockfd, &event) == -1) {
-        throw std::runtime_error("Failed to add socket to epoll");
-    }
-}
-
-bool ServerCommunicator::waitForData() {
-    struct epoll_event events[MAX_EVENTS];
-    int n = epoll_wait(epollFd, events, MAX_EVENTS, -1);
-    if (n == -1) {
-        std::cerr << "Epoll wait error\n";
+    if (!isSocketReadyForIO()) {
         return false;
     }
-    return true; // Data is ready to be read
+    return send(sockfd, message.c_str(), message.size(), 0) != -1;
 }
 
+std::string ServerCommunicator::receiveMessage() {
+    if (!isSocketReadyForIO()) {
+        return "";
+    }
+
+    char buffer[1024];
+    int len = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (len > 0) {
+        return std::string(buffer, len);
+    }
+    return "";
+}
 
 bool ServerCommunicator::sendFile(const std::string& filePath) {
-    if (!isConnected) return false;
-
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file for reading: " << filePath << "\n";
+        std::cerr << "Failed to open file: " << filePath << std::endl;
         return false;
     }
 
-    // Get file size
-    file.seekg(0, std::ios::end);
-    size_t fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    // Send file size first
-    if (send(sockfd, &fileSize, sizeof(fileSize), 0) < 0) {
-        std::cerr << "Failed to send file size\n";
-        return false;
-    }
-
-    // Send file contents
     char buffer[1024];
-    while (file) {
-        file.read(buffer, sizeof(buffer));
-        ssize_t bytesToWrite = file.gcount();
-
-        ssize_t totalWritten = 0;
-        while (totalWritten < bytesToWrite) {
-            ssize_t written = send(sockfd, buffer + totalWritten, bytesToWrite - totalWritten, 0);
-            if (written < 0) {
-                std::cerr << "Failed to send file data\n";
-                return false;
-            }
-            totalWritten += written;
-        }
-    }
-
-    return true;
-}
-
-
-bool ServerCommunicator::receiveMessage(std::string& outMessage) {
-    if (!isConnected || !waitForData()) return false;
-
-    const size_t bufferSize = 1024;
-    char buffer[bufferSize];
-    outMessage.clear();
-
-    while (true) {
-        ssize_t bytesReceived = recv(sockfd, buffer, bufferSize - 1, 0);
-        if (bytesReceived <= 0) {
-            isConnected = false;
-            std::cerr << "Failed to receive message or connection closed\n";
+    while (file.read(buffer, sizeof(buffer)) || file.gcount()) {
+        int len = file.gcount();
+        if (send(sockfd, buffer, len, 0) == -1) {
+            std::cerr << "Failed to send file data" << std::endl;
             return false;
         }
-
-        buffer[bytesReceived] = '\0';
-        outMessage.append(buffer);
-
-        if (outMessage.find('\n') != std::string::npos) {
-            break;
-        }
     }
+
+    file.close();
     return true;
 }
 
 bool ServerCommunicator::receiveFile(const std::string& filePath) {
-    if (!isConnected || !waitForData()) return false;
-
     std::ofstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << filePath << "\n";
+        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
         return false;
     }
 
-    size_t fileSize;
-    if (recv(sockfd, &fileSize, sizeof(fileSize), 0) <= 0) {
-        isConnected = false;
-        std::cerr << "Failed to receive file size\n";
+    // Read the size of the file first
+    int64_t fileSize = 0;
+    int len = recv(sockfd, &fileSize, sizeof(fileSize), 0);
+    if (len != sizeof(fileSize)) {
+        std::cerr << "Failed to receive file size" << std::endl;
         return false;
     }
+
+    int64_t remaining = fileSize;
 
     char buffer[1024];
-    size_t totalBytesReceived = 0;
-    while (totalBytesReceived < fileSize) {
-        ssize_t bytesReceived = recv(sockfd, buffer, sizeof(buffer), 0);
-        if (bytesReceived <= 0) {
-            isConnected = false;
-            std::cerr << "Connection closed or error while receiving file\n";
+    while (remaining > 0) {
+        int toRead = std::min(remaining, (int64_t)sizeof(buffer));
+        int bytesRead = recv(sockfd, buffer, toRead, 0);
+        if (bytesRead <= 0) {
+            std::cerr << "Failed to receive file data or connection closed" << std::endl;
             return false;
         }
 
-        file.write(buffer, bytesReceived);
-        totalBytesReceived += bytesReceived;
+        file.write(buffer, bytesRead);
+        remaining -= bytesRead;
     }
+
+    file.close();
     return true;
 }
 
 
-void ServerCommunicator::closeConnection() {
-    if (isConnected) {
-        close(sockfd); // Close the socket
-        isConnected = false;
-    }
 
-    // If using epoll, you might also want to close the epoll file descriptor
-    if (epollFd != -1) {
-        close(epollFd);
+void ServerCommunicator::closeConnection() {
+    if (sockfd) {
+        close(sockfd);
+        isConnected = false;
+        sockfd = 0;
     }
 }
+
+bool ServerCommunicator::setupSocket(const std::string& serverIP, int serverPort) {
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        return false;
+    }
+
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(serverPort);
+    server_addr.sin_addr.s_addr = inet_addr(serverIP.c_str());
+
+    return connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) != -1;
+}
+
+bool ServerCommunicator::isSocketReadyForIO() {
+    int ret = poll(&poll_fd, 1, 5000); // 5000 ms timeout
+    if (ret <= 0) {
+        return false; // Error or timeout
+    }
+    if (poll_fd.revents & (POLLIN | POLLOUT)) {
+        return true; // Socket ready for read/write
+    }
+    return false;
+}
+
+bool ServerCommunicator::isConnectedToServer() const {
+    return isConnected;
+}
+
