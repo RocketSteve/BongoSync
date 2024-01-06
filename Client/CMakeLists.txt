@@ -77,6 +77,7 @@ add_executable(ClientTests
         tests/test.cpp
         tests/MerkleTreeTest.cpp
         ${CLIENT_SOURCES}
+        tests/MessageBuilderTest.cpp
 )
 
 # Link libraries for Test Executable
