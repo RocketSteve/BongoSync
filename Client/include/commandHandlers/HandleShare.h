@@ -5,6 +5,9 @@
 
 #include <string>
 #include "../Utility.h"
+#include "../communication/ServerCommunicator.h"
+#include "../communication/MessageCreator.h"
+#include "../communication/MessageBuilder.h"
 
 class HandleShare {
 public:
