@@ -51,15 +51,22 @@ MessageBuilder& MessageBuilder::setFilePath(const std::string& filePath) {
 }
 
 std::string MessageBuilder::buildFileRequestMessage() const {
-    nlohmann::json messageJson;
-    messageJson["type"] = "file_request";
-    messageJson["file_path"] = filePath;
-    return messageJson.dump();
+    nlohmann::json msg;
+    msg["type"] = "file_request";
+    msg["file_path"] = filePath;
+    return msg.dump();
 }
 
 std::string MessageBuilder::buildDeleteMessage() const {
-    nlohmann::json messageJson;
-    messageJson["type"] = "delete";
-    messageJson["file_path"] = filePath;
-    return messageJson.dump();
+    nlohmann::json msg;
+    msg["type"] = "delete";
+    msg["file_path"] = filePath;
+    return msg.dump();
+}
+
+std::string MessageBuilder::buildShareMessage() const {
+    nlohmann::json msg;
+    msg["type"] = "share";
+    msg["data"]["email"] = email;
+    return msg.dump();
 }
