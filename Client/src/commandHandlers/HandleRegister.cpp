@@ -1,6 +1,6 @@
 #include "../../include/commandHandlers/HandleRegister.h"
 
-//TODO implement user exists message from server
+//TODO implement message interpretation
 
 
 void HandleRegister::initiateRegistration() {
@@ -27,14 +27,23 @@ void HandleRegister::initiateRegistration() {
 }
 
 bool HandleRegister::checkWithServer(const std::string& email, const std::string& password, const std::string& hostname) {
-    // Implementation of checking with server
     std::cout << "Checking with server ...\n" << email << "\n" << password << "\n" << hostname << "\n";
 
-    bool response;
     auto& communicator = ServerCommunicator::getInstance();
-    if (!communicator.isConnectedToServer() && !communicator.connectToServer()) {
-        std::cerr << "Failed to connect to server\n";
-        return false;
+    if (!communicator.isConnectedToServer()) {
+        std::string serverIP;
+        int serverPort;
+
+        std::cout << "Enter server IP: ";
+        std::cin >> serverIP;
+
+        std::cout << "Enter server port: ";
+        std::cin >> serverPort;
+
+        if (!communicator.connectToServer(serverIP, serverPort)) {
+            std::cerr << "Failed to connect to server\n";
+            return false;
+        }
     }
 
     MessageBuilder messageCreator;
@@ -43,11 +52,17 @@ bool HandleRegister::checkWithServer(const std::string& email, const std::string
             .setHostname(hostname)
             .setPassword(password)
             .buildRegistrationMessage();
-    response = communicator.sendMessage(regMessage);
-
-    if (response) {
-        return true;
+    if (communicator.sendMessage(regMessage)) {
+        std::cout << "Message sent" << std::endl;
+        if (communicator.receiveMessage() == "User exists") {
+            std::cout << "User already exists" << std::endl;
+            return false;
+        } else {
+            std::cout << "User does not exist. Registration successful" << std::endl;
+            return true;
+        }
     } else {
+        std::cerr << "Failed to send registration message" << std::endl;
         return false;
     }
 }
