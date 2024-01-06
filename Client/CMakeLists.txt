@@ -4,7 +4,8 @@ project(Client)
 set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
-
+include_directories(/opt/homebrew/include)  # Add this line to include headers
+link_directories(/opt/homebrew/lib)
 # Fetch nlohmann_json
 FetchContent_Declare(
         json
@@ -23,26 +24,28 @@ FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 
-# Fetch OpenSSL
-FetchContent_Declare(
-        openssl
-        GIT_REPOSITORY https://github.com/openssl/openssl.git
-        GIT_TAG OpenSSL_1_1_1k
-)
-FetchContent_MakeAvailable(openssl)
 
 # Fetch BLAKE3
 FetchContent_Declare(
         blake3
         GIT_REPOSITORY https://github.com/BLAKE3-team/BLAKE3.git
-        GIT_TAG some_specific_tag_or_branch # Replace with a specific tag or branch
+        GIT_TAG master
 )
 FetchContent_MakeAvailable(blake3)
+
+FetchContent_Declare(
+        libuv
+        GIT_REPOSITORY https://github.com/libuv/libuv.git
+        GIT_TAG v1.47.0
+)
+FetchContent_MakeAvailable(libuv)
+
+find_package(OpenSSL REQUIRED)
 
 # Include directories
 include_directories(include)
 include_directories(${nlohmann_json_INCLUDE_DIRS})
-include_directories(${openssl_SOURCE_DIR}/include)
+include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${blake3_SOURCE_DIR}/c) # Assuming this is the correct path
 # Include other necessary directories
 
@@ -83,8 +86,8 @@ target_link_libraries(ClientTests
         nlohmann_json::nlohmann_json
         blake3 # Assuming this is the correct target name
         uv
-        gtest
         gtest_main
+        gmock_main # And this line
         pthread
         # Add other dependencies used by your tests
 )
