@@ -7,7 +7,9 @@
 
 class FileWatcher {
 public:
-    explicit FileWatcher(const std::string& directoryPath);
+    explicit FileWatcher(FileChangeDetector* detector)
+            : fileChangeDetector(detector), loop(uv_default_loop()), isRunning(false) {}
+
     ~FileWatcher();
 
     static FileWatcher& getInstance();
