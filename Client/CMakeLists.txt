@@ -97,5 +97,5 @@ target_link_libraries(ClientTests
 
 # Add tests
 gtest_discover_tests(ClientTests)
-add_executable(server ../Server/include/Database.h
-        ../Server/src/Database.cpp)
+add_executable(server ../Server/include/Database/Database.h
+        ../Server/src/Database/Database.cpp)

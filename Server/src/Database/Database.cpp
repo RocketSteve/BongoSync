@@ -1,4 +1,4 @@
-#include "../include/Database.h"
+#include "../include/Database/Database.h"
 
 Database::Database(const std::string& connectionStr) : C(connectionStr) {
     if (C.is_open()) {
@@ -15,9 +15,26 @@ void Database::initialize() {
 }
 
 bool Database::databaseExists() {
-    // Logic to check if the database exists
-    // You can execute a query to check for the existence of your tables
-    return true; // Placeholder
+    try {
+        pqxx::connection conn("dbname=your_dbname user=your_username password=your_password host=your_host");
+        pqxx::work txn(conn);
+
+        // Query to check if a specific table exists
+        std::string query = "SELECT EXISTS ("
+                            "SELECT FROM pg_tables "
+                            "WHERE schemaname = 'public' AND tablename  = 'your_table_name');";
+
+        pqxx::result r = txn.exec(query);
+
+        // Check if the query result is true (table exists)
+        if (!r.empty() && r[0][0].as<bool>()) {
+            return true;
+        }
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+    }
+
+    return false;
 }
 
 void Database::createTables() {
