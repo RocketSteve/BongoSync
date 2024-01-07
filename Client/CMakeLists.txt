@@ -42,6 +42,8 @@ FetchContent_MakeAvailable(libuv)
 
 find_package(OpenSSL REQUIRED)
 
+
+
 # Include directories
 include_directories(include)
 include_directories(${nlohmann_json_INCLUDE_DIRS})
@@ -95,3 +97,5 @@ target_link_libraries(ClientTests
 
 # Add tests
 gtest_discover_tests(ClientTests)
+add_executable(server ../Server/include/Database.h
+        ../Server/src/Database.cpp)
