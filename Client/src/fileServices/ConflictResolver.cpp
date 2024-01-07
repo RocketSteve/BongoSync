@@ -19,7 +19,6 @@ void ConflictResolver::renameFileForConflict(const std::string& filePath) {
 }
 
 void ConflictResolver::requestServerVersion(const std::string& filePath) {
-    // Use MessageCreator and MessageBuilder to build a file request message
     std::string request = MessageCreator::create()
             .setFilePath(filePath)
             .buildFileRequestMessage();
