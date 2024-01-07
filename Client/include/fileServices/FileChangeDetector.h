@@ -29,7 +29,7 @@ private:
 class FileChangeDetector {
 public:
     FileChangeDetector(const std::string& directoryPath);
-    std::vector<FileChange> detectChanges();
+    virtual std::vector<FileChange> detectChanges();
 
 private:
     std::string directoryPath;
