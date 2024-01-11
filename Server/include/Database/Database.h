@@ -7,7 +7,7 @@
 
 class Database {
 public:
-    Database(const std::string& connectionStr);
+    Database();
     void initialize();
 
 private:

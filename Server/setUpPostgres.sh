@@ -66,6 +66,8 @@ esac
 echo "Stopping any running PostgreSQL service..."
 brew services stop postgresql || sudo systemctl stop postgresql
 
+export PATH="/opt/homebrew/opt/postgresql@14/bin:$PATH"
+
 # Create and initialize the new PostgreSQL data directory
 echo "Creating and initializing new PostgreSQL data directory at $PG_DATA_DIR..."
 if [ -d "$PG_DATA_DIR" ]; then
@@ -74,16 +76,18 @@ if [ -d "$PG_DATA_DIR" ]; then
 else
     mkdir -p "$PG_DATA_DIR"
 fi
-initdb "$PG_DATA_DIR"
+/opt/homebrew/opt/postgresql@14/bin/initdb "$PG_DATA_DIR"
+
 
 # Configure PostgreSQL to use the new data directory
-PG_SERVICE_FILE="/usr/local/opt/postgresql/homebrew.mxcl.postgresql.plist"
+PG_SERVICE_FILE="/opt/homebrew/opt/postgresql@14/homebrew.mxcl.postgresql.plist"
 if [ -f "$PG_SERVICE_FILE" ]; then
     cp "$PG_SERVICE_FILE" "$PG_SERVICE_FILE.bak"
-    sed -i '' "s|/usr/local/var/postgres|$PG_DATA_DIR|g" "$PG_SERVICE_FILE"
+    sed -i '' "s|/opt/homebrew/var/postgres|$PG_DATA_DIR|g" "$PG_SERVICE_FILE"
 else
     echo "PostgreSQL service file not found. Skipping configuration."
 fi
+
 
 # Start PostgreSQL with the new configuration
 echo "Starting PostgreSQL with the new configuration..."

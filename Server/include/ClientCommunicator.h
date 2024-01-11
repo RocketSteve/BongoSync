@@ -7,6 +7,10 @@
 #include <thread>
 #include <vector>
 #include <poll.h>
+#include <sys/stat.h>
+#include "Handlers/RegistrationHandler.h"
+#include "Communciation/MessageBuilder.h"
+#include "Handlers/HandleLogin.h"
 
 class ClientCommunicator {
 public:
@@ -23,8 +27,9 @@ private:
 
     void listenForClients();
     void handleClient(int clientSocket);
-    int setupServerSocket();
-    void closeServerSocket();
+    void handleFileReception(int clientSocket, const std::string& filePath, int64_t fileSize);
+    int setupServerSocket() const;
+    void closeServerSocket() const;
 };
 
 #endif // CLIENTCOMMUNICATOR_H
