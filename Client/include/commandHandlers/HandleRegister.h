@@ -21,7 +21,7 @@ public:
     void initiateRegistration();
 private:
     bool checkWithServer(const std::string& email, const std::string& password, const std::string& hostname);
-    void createConfigFile(const std::string& email, const std::string& hostname);
+    static void createConfigFile(const std::string& email, const std::string& hostname);
 };
 
 #endif // HANDLEREGISTER_H

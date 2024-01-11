@@ -3,6 +3,7 @@
 
 #include <uv.h>
 #include <string>
+#include <iostream>
 #include "FileChangeDetector.h"
 
 class FileWatcher {
@@ -16,6 +17,7 @@ public:
     void initialize(const std::string& directoryPath);
     FileWatcher(const FileWatcher&) = delete; // Delete copy constructor
     FileWatcher& operator=(const FileWatcher&) = delete; // Delete copy assignment operator
+    std::string static changeTypeToString(FileChange::Type changeType);
 
     void start();
     void stop();

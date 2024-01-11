@@ -73,5 +73,3 @@ std::vector<FileChange> FileChangeDetector::compareTrees() {
 
     return changes;
 }
-
-// Implement other helper methods as needed.

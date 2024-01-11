@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <cstdint>
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 
 class ServerCommunicator {
@@ -24,6 +25,9 @@ public:
     bool receiveFile(const std::string& filePath);
     void closeConnection();
     bool isMessageReady();
+    bool receiveFile(std::string& filePath);
+    void processIncomingMessages();
+    bool checkForIncomingMessages();
 
     bool isConnectedToServer() const;
 

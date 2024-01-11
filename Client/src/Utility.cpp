@@ -17,10 +17,22 @@ std::string Utility::getHostname() {
 
 std::string Utility::getEmailFromConfig() {
     std::ifstream configFile;
-    configFile.open("config.json");
+    configFile.open(std::filesystem::path(getenv("HOME")) / ".bongo/config.json");
+    std::cout << "Reading config file ...\n";
     nlohmann::json j;
     configFile >> j;
-    return j["email"];
+    std::cout << "Email: " << j["Email"] << "\n";
+    return j["Email"];
+}
+
+std::string Utility::getHostnameFromConfig() {
+    std::ifstream configFile;
+    configFile.open(std::filesystem::path(getenv("HOME")) / ".bongo/config.json");
+    std::cout << "Reading config file ...\n";
+    nlohmann::json j;
+    configFile >> j;
+    std::cout << "Hostname: " << j["Hostname"] << "\n";
+    return j["Hostname"];
 }
 
 bool Utility::configExists() {
@@ -146,10 +158,11 @@ bool Utility::confirmPassword(const std::string& password) {
     return password == confirmPassword;
 }
 
-
+// TODO start here tomorrow
 std::string Utility::getDefaultDirectory() {
-    std::string hostname = Utility::getHostname();
+    std::string hostname = getHostnameFromConfig();
     std::string bongoDirectory = std::filesystem::path(getenv("HOME")) / ".bongo";
     std::string directoryPath = bongoDirectory + "/" + hostname;
+    std::cout << "Directory path: " << directoryPath << "\n";
     return directoryPath;
 }

@@ -16,17 +16,19 @@ void HandleStart::initiateStart() {
 }
 
 bool HandleStart::validateWithServer(const std::string& password) {
-    std::cout << "Validating with server ...\n" << password << "\n";
+    std::cout << "Validating with server" << std::endl;
 
     std::string email = Utility::getEmailFromConfig();
+    std::cout << "Email: " << email << "\n";
     std::string passwdHash = Utility::hashPassword(password);
-
+    std::cout << "Hashed password: " << passwdHash << "\n";
     // Create login message
     MessageBuilder messageCreator;
     std::string loginMessage = MessageCreator::create()
             .setEmail(email)
             .setPassword(passwdHash)
             .buildLoginMessage();
+    std::cout << "Login message: " << loginMessage << "\n";
 
     // Get the instance of ServerCommunicator
     auto& serverCommunicator = ServerCommunicator::getInstance();
@@ -55,8 +57,8 @@ bool HandleStart::validateWithServer(const std::string& password) {
     }
 
     // Receive the response
-    std::string responseStr;
-    if (!(responseStr = serverCommunicator.receiveMessage()).empty()) {
+    std::string responseStr = serverCommunicator.receiveMessage();
+    if (responseStr.empty()) {
         std::cerr << "Failed to receive response from server.\n";
         return false;
     }
@@ -64,11 +66,16 @@ bool HandleStart::validateWithServer(const std::string& password) {
     // Handle the response
     try {
         auto responseJson = nlohmann::json::parse(responseStr);
-        bool isSuccess = responseJson.value("success", false);
-        std::string message = responseJson.value("message", "");
-
-        std::cout << "Server response: " << message << "\n";
-        return isSuccess;
+        if (responseJson["response"] == "password_correct") {
+            std::cout << "Password is correct.\n";
+            return true;
+        } else if (responseJson["response"] == "password_incorrect") {
+            std::cout << "Password is incorrect.\n";
+            return false;
+        } else {
+            std::cerr << "Unknown server response.\n";
+            return false;
+        }
     } catch (const nlohmann::json::parse_error& e) {
         std::cerr << "JSON parsing error: " << e.what() << "\n";
         return false;

@@ -26,5 +26,5 @@ void ConflictResolver::requestServerVersion(const std::string& filePath) {
     // Send request to server
     serverCommunicator.sendMessage(request);
 
-    serverCommunicator.receiveFile(filePath);
+    //serverCommunicator.receiveFile(filePath);
 }

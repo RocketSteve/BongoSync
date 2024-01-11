@@ -81,64 +81,68 @@ bool ServerCommunicator::sendFile(const std::string& filePath) {
     if (confirmationJson["data"]["status"] != "success") {
         std::cerr << "File transfer failed: " << confirmationJson["data"]["message"].get<std::string>() << std::endl;
         return false;
+    } else {
+        std::cout << "File transfer successful" << std::endl;
     }
 
     return true;
 }
 
-
-bool ServerCommunicator::receiveFile() {
-    // Receive the JSON metadata message
-    std::string metadataMsg = receiveMessage();
-    if (metadataMsg.empty()) {
-        std::cerr << "Failed to receive file metadata" << std::endl;
-        return false;
-    }
-
-    // Parse JSON metadata
-    nlohmann::json fileMetadata = nlohmann::json::parse(metadataMsg);
-    std::string filePath = fileMetadata["data"]["file_name"];
-    int64_t fileSize = fileMetadata["data"]["file_size"];
-
-    std::ofstream file(filePath, std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
-        return false;
-    }
-
-    // Receive file data
-    int64_t remaining = fileSize;
-    char buffer[1024];
-    while (remaining > 0) {
-        int toRead = std::min(remaining, (int64_t)sizeof(buffer));
-        int bytesRead = recv(sockfd, buffer, toRead, 0);
-        if (bytesRead <= 0) {
-            std::cerr << "Failed to receive file data or connection closed" << std::endl;
-
-            nlohmann::json errorMsg;
-            errorMsg["action"] = "file_transfer_confirmation";
-            errorMsg["data"]["file_name"] = filePath;
-            errorMsg["data"]["status"] = "error";
-
-            sendMessage(errorMsg.dump());
-
-            file.close();
-            return false;
-        }
-
-        file.write(buffer, bytesRead);
-        remaining -= bytesRead;
-    }
-
-    nlohmann::json confirmationMsg;
-    confirmationMsg["action"] = "file_transfer_confirmation";
-    confirmationMsg["data"]["file_name"] = filePath;
-    confirmationMsg["data"]["status"] = "success";
-    sendMessage(confirmationMsg.dump());
-
-    file.close();
+bool ServerCommunicator::receiveFile(std::string& filePath) {
     return true;
 }
+//bool ServerCommunicator::receiveFile() {
+//    // Receive the JSON metadata message
+//    std::string metadataMsg = receiveMessage();
+//    if (metadataMsg.empty()) {
+//        std::cerr << "Failed to receive file metadata" << std::endl;
+//        return false;
+//    }
+//
+//    // Parse JSON metadata
+//    nlohmann::json fileMetadata = nlohmann::json::parse(metadataMsg);
+//    std::string filePath = fileMetadata["data"]["file_name"];
+//    int64_t fileSize = fileMetadata["data"]["file_size"];
+//
+//    std::ofstream file(filePath, std::ios::binary);
+//    if (!file.is_open()) {
+//        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
+//        return false;
+//    }
+//
+//    // Receive file data
+//    int64_t remaining = fileSize;
+//    char buffer[1024];
+//    while (remaining > 0) {
+//        int toRead = std::min(remaining, (int64_t)sizeof(buffer));
+//        int bytesRead = recv(sockfd, buffer, toRead, 0);
+//        if (bytesRead <= 0) {
+//            std::cerr << "Failed to receive file data or connection closed" << std::endl;
+//
+//            nlohmann::json errorMsg;
+//            errorMsg["action"] = "file_transfer_confirmation";
+//            errorMsg["data"]["file_name"] = filePath;
+//            errorMsg["data"]["status"] = "error";
+//
+//            sendMessage(errorMsg.dump());
+//
+//            file.close();
+//            return false;
+//        }
+//
+//        file.write(buffer, bytesRead);
+//        remaining -= bytesRead;
+//    }
+//
+//    nlohmann::json confirmationMsg;
+//    confirmationMsg["action"] = "file_transfer_confirmation";
+//    confirmationMsg["data"]["file_name"] = filePath;
+//    confirmationMsg["data"]["status"] = "success";
+//    sendMessage(confirmationMsg.dump());
+//
+//    file.close();
+//    return true;
+//}
 
 
 
@@ -188,4 +192,25 @@ bool ServerCommunicator::isMessageReady() {
     int ret = poll(fdArray, 1, 0);
     return (ret > 0) && (fdArray[0].revents & POLLIN);
 }
+
+bool ServerCommunicator::checkForIncomingMessages() {
+    struct pollfd fdArray[1];
+    fdArray[0].fd = sockfd;
+    fdArray[0].events = POLLIN;
+
+    int ret = poll(fdArray, 1, 5000); // 5000 ms timeout
+    return (ret > 0) && (fdArray[0].revents & POLLIN);
+}
+
+void ServerCommunicator::processIncomingMessages() {
+    if (checkForIncomingMessages()) {
+        std::string message = receiveMessage();
+        if (!message.empty()) {
+            // Process the received message
+            std::cout << "Received message: " << message << std::endl;
+            // Additional processing logic here...
+        }
+    }
+}
+
 

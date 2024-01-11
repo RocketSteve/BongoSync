@@ -126,10 +126,10 @@ void HandleSync::handleRemoteUpdate(const nlohmann::json& updateInfo) {
 
             // Download and save the remote file with a different name
             std::string receivedFilePath = remoteFile + "_remote";
-            serverCommunicator.receiveFile(receivedFilePath);
+            //serverCommunicator.receiveFile(receivedFilePath);
         } else {
             // No conflict, directly download the file
-            serverCommunicator.receiveFile(remoteFile);
+            //serverCommunicator.receiveFile(remoteFile);
         }
     }
 }

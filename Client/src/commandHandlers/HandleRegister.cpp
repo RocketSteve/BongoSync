@@ -18,7 +18,7 @@ void HandleRegister::initiateRegistration() {
     } while (!Utility::confirmPassword(password));
 
     if (!checkWithServer(email, password, hostname)) {
-        std::cout << "User already exists, please try again.\n";
+        std::cout << "User already exists, please try again with different credentials.\n";
         initiateRegistration();
     } else {
         createConfigFile(email, hostname);
@@ -46,26 +46,38 @@ bool HandleRegister::checkWithServer(const std::string& email, const std::string
         }
     }
 
+    std::string hashedPassword = Utility::hashPassword(password);
+
     MessageBuilder messageCreator;
     std::string regMessage = MessageCreator::create()
             .setEmail(email)
             .setHostname(hostname)
-            .setPassword(password)
+            .setPassword(hashedPassword)
             .buildRegistrationMessage();
+
     if (communicator.sendMessage(regMessage)) {
         std::cout << "Message sent" << std::endl;
-        if (communicator.receiveMessage() == "User exists") {
+        std::string response = communicator.receiveMessage();
+
+        nlohmann::json jsonResponse = nlohmann::json::parse(response);
+        std::string responseType = jsonResponse["response"];
+
+        if (responseType == "user_exists") {
             std::cout << "User already exists" << std::endl;
             return false;
-        } else {
+        } else if (responseType == "user_added") {
             std::cout << "User does not exist. Registration successful" << std::endl;
             return true;
+        } else {
+            std::cerr << "Unexpected server response" << std::endl;
+            return false;
         }
     } else {
         std::cerr << "Failed to send registration message" << std::endl;
         return false;
     }
 }
+
 
 void HandleRegister::createConfigFile(const std::string& email, const std::string& hostname) {
     const std::string filesDir = std::filesystem::current_path();
@@ -75,12 +87,20 @@ void HandleRegister::createConfigFile(const std::string& email, const std::strin
     // Create the hidden directory if it does not exist
     std::filesystem::create_directories(configDir);
 
-    // Write email and hostname to the config file
-    std::ofstream out(configFile);
-    if (out) {
-        out << "Email: " << email << "\n";
-        out << "Hostname: " << hostname << "\n";
-        out << "Path: " << filesDir << "\n";
+    // Construct the JSON object
+    nlohmann::json configJson = {
+            {"Email", email},
+            {"Hostname", hostname},
+            {"Path", filesDir}
+    };
+
+    // Serialize the JSON object to a string
+    std::string serializedJson = configJson.dump(); // Indent with 4 spaces for readability
+
+    // Write the serialized JSON string to the file
+    std::ofstream outFile(configFile);
+    if (outFile) {
+        outFile << serializedJson;
         std::cout << "Configuration file created at: " << configFile << std::endl;
     } else {
         std::cerr << "Failed to create configuration file at: " << configFile << std::endl;

@@ -43,11 +43,27 @@ void FileWatcher::stop() {
 void FileWatcher::onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status) {
     FileWatcher* watcher = static_cast<FileWatcher*>(handle->data);
     if (watcher && filename) {
-        // Use FileChangeDetector to detect changes, using -> since fileChangeDetector is a pointer
+        // Use FileChangeDetector to detect changes
         auto changes = watcher->fileChangeDetector->detectChanges();
+
+        // Process the detected changes
         for (const auto& change : changes) {
-            // Process the changes as needed
-            // Example: std::cout << "Change detected in file: " << change.getFilePath() << std::endl;
+            // Here, you can process each change as needed.
+            // For example, you might log the change, update a user interface, or trigger some other action.
+            std::cout << "Change detected: " << change.getFilePath() << std::endl;
+
+            // Implement additional logic based on the type of change
+            switch (change.getChangeType()) {
+                case FileChange::Type::Added:
+                    std::cout << "File added: " << change.getFilePath() << std::endl;
+                    break;
+                case FileChange::Type::Deleted:
+                    std::cout << "File deleted: " << change.getFilePath() << std::endl;
+                    break;
+                case FileChange::Type::Modified:
+                    std::cout << "File modified: " << change.getFilePath() << std::endl;
+                    break;
+            }
         }
     }
 }

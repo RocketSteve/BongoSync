@@ -22,6 +22,7 @@ public:
     static std::string getEmailFromConfig();
     static std::string hashPassword(const std::string& password);
     static std::string getDefaultDirectory();
+    static std::string getHostnameFromConfig();
 
     static bool confirmPassword(const std::string& password);
     static bool configExists();

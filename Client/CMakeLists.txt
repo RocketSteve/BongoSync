@@ -4,9 +4,16 @@ project(Client)
 set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
-include_directories(/opt/homebrew/include)  # Add this line to include headers
+include_directories(/opt/homebrew/include)
 link_directories(/opt/homebrew/lib)
-# Fetch nlohmann_json
+
+# Specify OpenSSL paths
+set(OPENSSL_INCLUDE_DIR /opt/homebrew/Cellar/openssl@3/3.2.0_1/include)
+set(OPENSSL_SSL_LIBRARY /opt/homebrew/Cellar/openssl@3/3.2.0_1/lib/libssl.dylib)
+set(OPENSSL_CRYPTO_LIBRARY /opt/homebrew/Cellar/openssl@3/3.2.0_1/lib/libcrypto.dylib)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
+
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -40,28 +47,43 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libuv)
 
-find_package(OpenSSL REQUIRED)
 
 
 
 # Include directories
 include_directories(include)
 include_directories(${nlohmann_json_INCLUDE_DIRS})
-include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${blake3_SOURCE_DIR}/c) # Assuming this is the correct path
 # Include other necessary directories
 
 # Source files
-file(GLOB_RECURSE CLIENT_SOURCES "src/*.cpp")
-list(REMOVE_ITEM CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+set(CLIENT_SOURCES
+        src/main.cpp
+        src/Utility.cpp
+        src/commandHandlers/HandleBreak.cpp
+        src/commandHandlers/HandleRegister.cpp
+        src/commandHandlers/HandleShare.cpp
+        src/commandHandlers/HandleStart.cpp
+        src/commandHandlers/HandleSync.cpp
+        src/commandHandlers/HandleUnshare.cpp
+        src/communication/MessageBuilder.cpp
+        src/communication/ServerCommunicator.cpp
+        src/fileServices/ConflictResolver.cpp
+        src/fileServices/FileChangeDetector.cpp
+        src/fileServices/FileWatcher.cpp
+        src/fileServices/HashCalculator.cpp
+        src/fileServices/MerkleTree.cpp
+        # Add more source files here
+)
+
 
 # Client Executable
 add_executable(Client src/main.cpp ${CLIENT_SOURCES})
 
 # Link libraries
 target_link_libraries(Client
-        OpenSSL::SSL
-        OpenSSL::Crypto
+        ${OPENSSL_SSL_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
         nlohmann_json::nlohmann_json
         blake3 # Assuming this is the correct target name
         uv
@@ -84,8 +106,8 @@ add_executable(ClientTests
 
 # Link libraries for Test Executable
 target_link_libraries(ClientTests
-        OpenSSL::SSL
-        OpenSSL::Crypto
+        ${OPENSSL_SSL_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
         nlohmann_json::nlohmann_json
         blake3 # Assuming this is the correct target name
         uv
