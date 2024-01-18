@@ -4,33 +4,40 @@
 #include <uv.h>
 #include <string>
 #include <iostream>
-#include "FileChangeDetector.h"
 
 class FileWatcher {
 public:
-    explicit FileWatcher(FileChangeDetector* detector)
-            : fileChangeDetector(detector), loop(uv_default_loop()), isRunning(false) {}
-
+    // Constructor and Destructor
+    FileWatcher();
     ~FileWatcher();
 
-    static FileWatcher& getInstance();
-    void initialize(const std::string& directoryPath);
-    FileWatcher(const FileWatcher&) = delete; // Delete copy constructor
-    FileWatcher& operator=(const FileWatcher&) = delete; // Delete copy assignment operator
-    std::string static changeTypeToString(FileChange::Type changeType);
+    // Disallow copy constructor and assignment operator
+    FileWatcher(const FileWatcher&) = delete;
+    FileWatcher& operator=(const FileWatcher&) = delete;
 
+    // Initialize the file watcher
+    void initialize(const std::string& directoryPath);
+
+    // Get the singleton instance of the file watcher
+    static FileWatcher& getInstance();
+
+    // Start and stop the file watcher
     void start();
     void stop();
 
 private:
-    FileWatcher(); // Private default constructor
-    static void onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status);
-
+    // Libuv loop and file system event
     uv_loop_t* loop;
     uv_fs_event_t fsEvent;
+
+    // Directory to watch
     std::string directoryToWatch;
-    FileChangeDetector *fileChangeDetector; // Now initialized in the constructor
+
+    // Running state
     bool isRunning;
+
+    // Static callback for libuv file system event changes
+    static void onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status);
 };
 
 #endif // FILEWATCHER_H

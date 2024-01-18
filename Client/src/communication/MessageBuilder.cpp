@@ -20,6 +20,26 @@ MessageBuilder& MessageBuilder::setTreeHash(const std::string& treeHash) {
     return *this;
 }
 
+MessageBuilder& MessageBuilder::setModifiedAt(const std::string &ModifiedAt) {
+    this->modifiedAt = ModifiedAt;
+    return *this;
+}
+
+MessageBuilder& MessageBuilder::setRelativeFilePath(const std::string& filePath) {
+    this->relativeFilePath = filePath;
+    return *this;
+}
+
+MessageBuilder& MessageBuilder::setAhead(bool ahead) {
+    this->ahead = ahead;
+    return *this;
+}
+
+MessageBuilder& MessageBuilder::setFileSize(size_t fileSize) {
+    this->fileSize = fileSize;
+    return *this;
+}
+
 // Build methods implementation
 std::string MessageBuilder::buildRegistrationMessage() const {
     nlohmann::json msg;
@@ -27,6 +47,7 @@ std::string MessageBuilder::buildRegistrationMessage() const {
     msg["data"]["email"] = email;
     msg["data"]["password"] = password;
     msg["data"]["hostname"] = hostname;
+    msg["data"]["tree_hash"] = treeHash;
     return msg.dump();
 }
 
@@ -42,6 +63,7 @@ std::string MessageBuilder::buildAskIfLatestMessage() const {
     nlohmann::json msg;
     msg["action"] = "check_latest";
     msg["data"]["tree_hash"] = treeHash;
+    msg["data"]["modified_at"] = modifiedAt;
     return msg.dump();
 }
 
@@ -69,4 +91,14 @@ std::string MessageBuilder::buildShareMessage() const {
     msg["type"] = "share";
     msg["data"]["email"] = email;
     return msg.dump();
+}
+
+// New method to build file metadata message
+std::string MessageBuilder::buildFileMetadataMessage() const {
+    nlohmann::json fileMetadata;
+    fileMetadata["action"] = "tree";
+    fileMetadata["data"]["file_name"] = relativeFilePath;
+    fileMetadata["data"]["ahead"] = ahead;
+    fileMetadata["data"]["file_size"] = fileSize;
+    return fileMetadata.dump();
 }

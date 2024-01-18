@@ -5,7 +5,9 @@
 #include <vector>
 #include <memory>
 #include <filesystem> // Include filesystem for directory handling
+#include <nlohmann/json.hpp>
 #include "HashCalculator.h"
+#include "../Utility.h"
 
 class MerkleTree {
 public:
@@ -41,6 +43,9 @@ public:
     bool areAllInternalNodesDirectories() const;
     int getTreeDepth() const;
 
+    std::string serializeTree() const;
+    void serializeNode(nlohmann::json& parentJson, const std::shared_ptr<Node>& node) const;
+    void saveTreeToFile(const std::string& serializedTree);
 
 private:
     std::shared_ptr<Node> root;

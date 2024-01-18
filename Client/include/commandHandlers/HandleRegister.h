@@ -15,13 +15,14 @@
 #include "../communication/ServerCommunicator.h"
 #include "../communication/MessageBuilder.h"
 #include "../communication/MessageCreator.h"
+#include "../fileServices/MerkleTree.h"
 
 class HandleRegister {
 public:
     void initiateRegistration();
 private:
-    bool checkWithServer(const std::string& email, const std::string& password, const std::string& hostname);
-    static void createConfigFile(const std::string& email, const std::string& hostname);
+    bool checkWithServer(const std::string& email, const std::string& password, const std::string& hostname, const std::string& serverIP, int serverPort);
+    static void createConfigFile(const std::string& email, const std::string& hostname, const std::string& serverIP, int serverPort);
 };
 
 #endif // HANDLEREGISTER_H

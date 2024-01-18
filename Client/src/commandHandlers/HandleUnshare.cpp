@@ -3,10 +3,6 @@
 // TODO implement this class
 
 void HandleUnshare::initiateUnshare(const std::string& email) {
-    if (!Utility::isLoggedIn()) {
-        std::cout << "Not logged in, please start the application\n";
-        return;
-    }
 
     if (checkWithServer(email)) {
         std::cout << "Unshared with " << email << std::endl;

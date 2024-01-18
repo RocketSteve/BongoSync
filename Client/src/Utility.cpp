@@ -9,16 +9,15 @@ std::string Utility::promptForEmail() {
 }
 
 std::string Utility::getHostname() {
-    std::string hostname;
-    std::cout << "Enter your hostname: ";
-    std::cin >> hostname;
-    return hostname;
+    return "files";
 }
+
+
 
 std::string Utility::getEmailFromConfig() {
     std::ifstream configFile;
     configFile.open(std::filesystem::path(getenv("HOME")) / ".bongo/config.json");
-    std::cout << "Reading config file ...\n";
+    std::cout << "Getting email config file ...\n";
     nlohmann::json j;
     configFile >> j;
     std::cout << "Email: " << j["Email"] << "\n";
@@ -28,12 +27,23 @@ std::string Utility::getEmailFromConfig() {
 std::string Utility::getHostnameFromConfig() {
     std::ifstream configFile;
     configFile.open(std::filesystem::path(getenv("HOME")) / ".bongo/config.json");
-    std::cout << "Reading config file ...\n";
+    std::cout << "Getting hostname config file ...\n";
     nlohmann::json j;
     configFile >> j;
     std::cout << "Hostname: " << j["Hostname"] << "\n";
     return j["Hostname"];
 }
+
+std::string Utility::getPathFromConfig() {
+    std::ifstream configFile;
+    configFile.open(std::filesystem::path(getenv("HOME")) / ".bongo/config.json");
+    std::cout << "Getting path from config file  ...\n";
+    nlohmann::json j;
+    configFile >> j;
+    std::cout << "Path: " << j["Path"] << "\n";
+    return j["Path"];
+}
+
 
 bool Utility::configExists() {
     std::cout << "Checking if config exists ...\n";
@@ -42,46 +52,6 @@ bool Utility::configExists() {
     } else {
         return false;
     }
-}
-
-bool Utility::isLoggedIn() {
-    std::cout << "Checking if user is logged in ...\n";
-    if (std::filesystem::exists(std::string(getenv("HOME")) + "/.bongo/config.json")) {
-        std::ifstream configFile;
-        configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
-        nlohmann::json j;
-        configFile >> j;
-        if (j["isLoggedIn"]) {
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
-}
-
-void Utility::LogIn() {
-    std::cout << "Logging in ...\n";
-    std::ifstream configFile;
-    configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
-    nlohmann::json j;
-    configFile >> j;
-    j["isLoggedIn"] = true;
-    std::ofstream o(std::string(getenv("HOME")) + "/.bongo/config.json");
-    o << std::setw(4) << j << std::endl;
-
-}
-
-void Utility::LogOut() {
-    std::cout << "Logging out ...\n";
-    std::ifstream configFile;
-    configFile.open(std::string(getenv("HOME")) + "/.bongo/config.json");
-    nlohmann::json j;
-    configFile >> j;
-    j["isLoggedIn"] = false;
-    std::ofstream o(std::string(getenv("HOME")) + "/.bongo/config.json");
-    o << std::setw(4) << j << std::endl;
 }
 
 std::string Utility::hashPassword(const std::string& password) {
@@ -158,11 +128,92 @@ bool Utility::confirmPassword(const std::string& password) {
     return password == confirmPassword;
 }
 
-// TODO start here tomorrow
 std::string Utility::getDefaultDirectory() {
     std::string hostname = getHostnameFromConfig();
-    std::string bongoDirectory = std::filesystem::path(getenv("HOME")) / ".bongo";
-    std::string directoryPath = bongoDirectory + "/" + hostname;
+    std::string path = getPathFromConfig();
+    std::string directoryPath = path;
     std::cout << "Directory path: " << directoryPath << "\n";
     return directoryPath;
+}
+
+
+// Helper method to construct config file path
+std::string Utility::getConfigFilePath() {
+    return (std::filesystem::path(getenv("HOME")) / ".bongo/config.json").string();
+}
+
+std::string Utility::getBongoDir() {
+    return (std::filesystem::path(getenv("HOME")) / ".bongo").string();
+}
+
+// Helper method to read config file
+nlohmann::json Utility::readConfigFile() {
+    std::ifstream configFile(getConfigFilePath());
+    if (!configFile.is_open()) {
+        throw std::runtime_error("Unable to open config file: " + getConfigFilePath());
+    }
+    nlohmann::json configJson;
+    configFile >> configJson;
+    return configJson;
+}
+
+std::pair<std::string, int> Utility::readServerConfig() {
+    nlohmann::json configJson = readConfigFile();
+    std::string serverIP = configJson.value("ServerIP", "");
+    int serverPort = configJson.value("ServerPort", 0);
+    return {serverIP, serverPort};
+}
+
+// Helper method to write to config file
+void Utility::writeConfigFile(const nlohmann::json& configJson) {
+    std::ofstream configFile(getConfigFilePath());
+    if (!configFile.is_open()) {
+        throw std::runtime_error("Unable to open config file for writing: " + getConfigFilePath());
+    }
+    configFile << std::setw(4) << configJson;
+}
+
+// Helper method to get current timestamp
+std::string Utility::getCurrentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm now_tm = *std::localtime(&now_time_t);
+    std::stringstream ss;
+    ss << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+    return ss.str();
+}
+
+std::string Utility::readWorkspaceHash() {
+    nlohmann::json configJson = readConfigFile();
+    return configJson.value("WorkspaceHash", "");
+}
+
+// Method to update workspace hash
+void Utility::updateWorkspaceHash(const std::string& newWorkspaceHash) {
+    try {
+        nlohmann::json configJson = readConfigFile();
+        configJson["WorkspaceHash"] = newWorkspaceHash;
+        configJson["modified_at"] = getCurrentTimestamp();  // Update the timestamp here
+        writeConfigFile(configJson);
+        std::cout << "Workspace hash and modified_at updated successfully." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error updating workspace hash: " << e.what() << std::endl;
+    }
+}
+
+
+// Method to read modified_at
+std::string Utility::readModifiedAt() {
+    nlohmann::json configJson = readConfigFile();
+    return configJson.value("modified_at", "");
+}
+
+bool Utility::isValidIPAddress(const std::string& ipAddress) {
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ipAddress.c_str(), &(sa.sin_addr));
+    return result != 0;
+}
+
+bool Utility::isValidPort(int port) {
+    return port > 0 && port <= 65535;
 }

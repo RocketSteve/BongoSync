@@ -2,24 +2,57 @@
 #include <nlohmann/json.hpp>
 
 // TODO add message interpretation
+//Client:
+//Calcualtre hash and send it to server
+//Wait for response
+//Server:
+//Compare hashes
+//Send list of changed files
+//Client:
+//receive changes
+//resolve conflicts use lsof | grep
+
+//bongo sync:
+//- calculate local dir hash, and current time
+//- server compares client hash to hash+last modification time thats known to the server
+//- if server is ahead -
+//transfer diffing files to client - upon completion client writes last received hash
+//- if client is ahead -
+//send tree hash and time to server, server once receives the files,
+//updates the tree hash (do you need "server busy on this workspace" so two db writes dont come in at the same time?)
+
+
+//File watcher is only supposed to trigger initiate sync.
+//Initiate sync will take care of:
+//- checking with server if synchronization is needed
+//- if needed, send files to server, if it is needed the mechanism should:
+//1. check what version is latest
+//1.1 if server is version is newer then receive files from server.
+//this will download newer files and mark conflicts
+//if there will be still files left to sync then (local changes not reflected on server and not synced because of server priority)
+//then the sync should be called again to send the files to server (local hash will have later date of modification so it will
+//tree for comparison and then server will detect that there are files that it doesn't have and will request these)
+//1.2 if client version is newer then send files to server
+//- if not needed, do nothing
+//on receival of files handle sync will check if there are any files opened of the same name as the received ones
+//if opened it will rename files from the server.
+//if not opened it will just save the files.
+
+//client shoudl only have one instance of handle sync
 
 HandleSync::HandleSync(const std::string& directoryPath)
         : directoryPath(directoryPath),
           merkleTree(),
-          fileChangeDetector(directoryPath),
           conflictResolver(ServerCommunicator::getInstance()) {}
 
 void HandleSync::initiateSync() {
-    if (!Utility::isLoggedIn()) {
-        std::cout << "Not logged in, please start the application\n";
-        return;
-    }
 
     merkleTree.buildTree(directoryPath);
     std::string currentHash = merkleTree.getTreeHash();
     std::string hostname = Utility::getHostname();
+    std::string modifiedAt = Utility::readModifiedAt();
 
-    if (checkWithServer(currentHash, hostname)) {
+    if (checkWithServer(currentHash, hostname, modifiedAt)) {
         std::cout << "Synchronization complete.\n";
     } else {
         std::cout << "Error during synchronization.\n";
@@ -29,11 +62,15 @@ void HandleSync::initiateSync() {
     updateListenerThread.detach();
 }
 
-bool HandleSync::checkWithServer(const std::string& currentHash, const std::string& hostname) {
+bool HandleSync::checkWithServer(const std::string& currentHash, const std::string& hostname, const std::string& modifiedAt) {
+    std::cout << "Checking with server ...\n" << hostname << "\n";
     std::string syncRequestMsg = MessageCreator::create()
             .setHostname(hostname)
             .setTreeHash(currentHash)
+            .setModifiedAt(modifiedAt)
             .buildAskIfLatestMessage();
+
+    std::cout << "Sync request message: " << syncRequestMsg << "\n";
 
     auto& serverCommunicator = ServerCommunicator::getInstance();
 
@@ -43,8 +80,8 @@ bool HandleSync::checkWithServer(const std::string& currentHash, const std::stri
     }
 
     // Receive the response
-    std::string responseStr;
-    if (!(responseStr = serverCommunicator.receiveMessage()).empty()) {
+    std::string responseStr = serverCommunicator.receiveMessage();
+    if (responseStr.empty()) {
         std::cerr << "Failed to receive response from server.\n";
         return false;
     }
@@ -52,36 +89,44 @@ bool HandleSync::checkWithServer(const std::string& currentHash, const std::stri
     // Handle the response
     try {
         auto responseJson = nlohmann::json::parse(responseStr);
-        bool isSuccess = responseJson.value("success", false);
-        std::string message = responseJson.value("message", "");
+        std::string responseType = responseJson.value("response", "");
 
-        std::cout << "Server response: " << message << "\n";
-        return isSuccess;
+        if (responseType == "latest") {
+            std::cout << "Server response: Latest version.\n";
+            return true;
+        } else if (responseType == "not_latest") {
+            std::cout << "Server response: Not the latest version.\n";
+
+            std::string ahead = "";
+            if (responseJson.contains("data") && responseJson["data"].is_object()) {
+                ahead = responseJson["data"].value("ahead", "");
+            }
+
+            std::cout << "ahead: " << ahead << "\n";
+
+            MerkleTree tree;
+            std::string directoryPath = Utility::getPathFromConfig();
+            tree.buildTree(directoryPath);
+
+            tree.serializeTree();
+
+            if (!serverCommunicator.sendMerkleTreeFile(ahead)) {
+                std::cerr << "Failed to transfer Merkle tree to server.\n";
+                return false;
+            } else {
+                std::cout << "Merkle tree sent to server.\n";
+            }
+
+
+
+            return true;
+        } else {
+            std::cerr << "Unexpected server response.\n";
+            return false;
+        }
     } catch (const nlohmann::json::parse_error& e) {
         std::cerr << "JSON parsing error: " << e.what() << "\n";
         return false;
-    }
-}
-
-
-void HandleSync::handleLocalChanges() {
-    auto changes = fileChangeDetector.detectChanges();
-    if (!changes.empty()) {
-        sendChangedFilesToServer(changes);
-    }
-}
-
-void HandleSync::sendChangedFilesToServer(const std::vector<FileChange>& changes) {
-    for (const auto& change : changes) {
-        switch (change.getChangeType()) {
-            case FileChange::Type::Added:
-            case FileChange::Type::Modified:
-                sendFileToServer(change.getFilePath());
-                break;
-            case FileChange::Type::Deleted:
-                sendDeleteMessageToServer(change.getFilePath());
-                break;
-        }
     }
 }
 
@@ -90,54 +135,6 @@ void HandleSync::sendFileToServer(const std::string& filePath) {
     if (!communicator.sendFile(filePath)) {
         std::cerr << "Failed to send file: " << filePath << "\n";
     }
-}
-
-void HandleSync::sendDeleteMessageToServer(const std::string& filePath) {
-
-    std::string deleteMessage = MessageCreator::create()
-            .setFilePath(filePath)
-            .buildDeleteMessage();
-
-    // Send the delete message to the server
-    ServerCommunicator& communicator = ServerCommunicator::getInstance();
-    if (!communicator.sendMessage(deleteMessage)) {
-        std::cerr << "Failed to send delete message for file: " << filePath << "\n";
-    }
-}
-
-
-void HandleSync::handleRemoteUpdate(const nlohmann::json& updateInfo) {
-    ServerCommunicator& serverCommunicator = ServerCommunicator::getInstance();
-
-    std::vector<std::string> remoteChangedFiles = updateInfo["changed_files"];
-
-    merkleTree.buildTree(directoryPath);
-    auto localChanges = fileChangeDetector.detectChanges();
-
-    for (const auto& remoteFile : remoteChangedFiles) {
-        bool isConflict = std::any_of(localChanges.begin(), localChanges.end(),
-                                      [&remoteFile](const FileChange& change) {
-                                          return change.getFilePath() == remoteFile;
-                                      });
-
-        if (isConflict) {
-            // Resolve conflict on the local copy
-            conflictResolver.resolveConflict(remoteFile);
-
-            // Download and save the remote file with a different name
-            std::string receivedFilePath = remoteFile + "_remote";
-            //serverCommunicator.receiveFile(receivedFilePath);
-        } else {
-            // No conflict, directly download the file
-            //serverCommunicator.receiveFile(remoteFile);
-        }
-    }
-}
-
-
-void HandleSync::startFileWatcherIfNeeded() {
-    FileWatcher& watcher = FileWatcher::getInstance();
-    watcher.start();
 }
 
 void HandleSync::listenForUpdates() {
@@ -163,3 +160,6 @@ void HandleSync::listenForUpdates() {
         }
     }
 }
+
+
+

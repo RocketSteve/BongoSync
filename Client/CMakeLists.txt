@@ -2,122 +2,43 @@ cmake_minimum_required(VERSION 3.26)
 project(Client)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(FetchContent)
-include_directories(/opt/homebrew/include)
-link_directories(/opt/homebrew/lib)
+find_package(PkgConfig REQUIRED)
 
-# Specify OpenSSL paths
-set(OPENSSL_INCLUDE_DIR /opt/homebrew/Cellar/openssl@3/3.2.0_1/include)
-set(OPENSSL_SSL_LIBRARY /opt/homebrew/Cellar/openssl@3/3.2.0_1/lib/libssl.dylib)
-set(OPENSSL_CRYPTO_LIBRARY /opt/homebrew/Cellar/openssl@3/3.2.0_1/lib/libcrypto.dylib)
-include_directories(${OPENSSL_INCLUDE_DIR})
+# Find OpenSSL
+find_package(OpenSSL REQUIRED)
+if(NOT OPENSSL_FOUND)
+    message(FATAL_ERROR "OpenSSL not found")
+endif()
 
+find_library(LIBUV_LIBRARY NAMES uv)
 
-FetchContent_Declare(
-        json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.10.5
-)
-FetchContent_MakeAvailable(json)
+if(NOT LIBUV_LIBRARY)
+    message(FATAL_ERROR "libuv not found")
+endif()
 
-# Fetch GTest
-FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.11.0
-)
-FetchContent_MakeAvailable(googletest)
-
-include(GoogleTest)
+# Find nlohmann/json
+find_package(nlohmann_json REQUIRED)
 
 
-# Fetch BLAKE3
-FetchContent_Declare(
-        blake3
-        GIT_REPOSITORY https://github.com/BLAKE3-team/BLAKE3.git
-        GIT_TAG master
-)
-FetchContent_MakeAvailable(blake3)
+# Find BLAKE
+pkg_check_modules(BLAKE3 REQUIRED IMPORTED_TARGET libblake3)
+if(NOT BLAKE3_FOUND)
+    message(FATAL_ERROR "blake3 not found")
+endif()
 
-FetchContent_Declare(
-        libuv
-        GIT_REPOSITORY https://github.com/libuv/libuv.git
-        GIT_TAG v1.47.0
-)
-FetchContent_MakeAvailable(libuv)
+# Include the directories of the libraries
+include_directories(${OPENSSL_INCLUDE_DIR} ${nlohmann_json_INCLUDE_DIRS} ${GTest_INCLUDE_DIRS} ${BLAKE3_INCLUDE_DIRS})
 
+file(GLOB_RECURSE CLIENT_SOURCES "src/*.cpp")
 
+list(REMOVE_ITEM CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main_main.cpp")
 
-
-# Include directories
-include_directories(include)
-include_directories(${nlohmann_json_INCLUDE_DIRS})
-include_directories(${blake3_SOURCE_DIR}/c) # Assuming this is the correct path
-# Include other necessary directories
-
-# Source files
-set(CLIENT_SOURCES
-        src/main.cpp
-        src/Utility.cpp
-        src/commandHandlers/HandleBreak.cpp
-        src/commandHandlers/HandleRegister.cpp
-        src/commandHandlers/HandleShare.cpp
-        src/commandHandlers/HandleStart.cpp
-        src/commandHandlers/HandleSync.cpp
-        src/commandHandlers/HandleUnshare.cpp
-        src/communication/MessageBuilder.cpp
-        src/communication/ServerCommunicator.cpp
-        src/fileServices/ConflictResolver.cpp
-        src/fileServices/FileChangeDetector.cpp
-        src/fileServices/FileWatcher.cpp
-        src/fileServices/HashCalculator.cpp
-        src/fileServices/MerkleTree.cpp
-        # Add more source files here
-)
-
-
-# Client Executable
-add_executable(Client src/main.cpp ${CLIENT_SOURCES})
-
-# Link libraries
-target_link_libraries(Client
-        ${OPENSSL_SSL_LIBRARY}
-        ${OPENSSL_CRYPTO_LIBRARY}
-        nlohmann_json::nlohmann_json
-        blake3 # Assuming this is the correct target name
-        uv
-        gtest
-        gtest_main
-        pthread
-        # Link any other necessary libraries here
-)
-
-# Enable testing
-enable_testing()
-
-# Test Executable
-add_executable(ClientTests
-        tests/test.cpp
-        tests/MerkleTreeTest.cpp
+# Add executable
+add_executable(Client
         ${CLIENT_SOURCES}
-        tests/MessageBuilderTest.cpp
 )
 
-# Link libraries for Test Executable
-target_link_libraries(ClientTests
-        ${OPENSSL_SSL_LIBRARY}
-        ${OPENSSL_CRYPTO_LIBRARY}
-        nlohmann_json::nlohmann_json
-        blake3 # Assuming this is the correct target name
-        uv
-        gtest_main
-        gmock_main # And this line
-        pthread
-        # Add other dependencies used by your tests
-)
-
-# Add tests
-gtest_discover_tests(ClientTests)
-add_executable(server ../Server/include/Database/Database.h
-        ../Server/src/Database/Database.cpp)
+# Link the libraries to your executable
+target_link_libraries(Client PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY} nlohmann_json::nlohmann_json PkgConfig::BLAKE3)

@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <algorithm>
 #include <nlohmann/json.hpp>
+#include "../Utility.h"
+#include "../communication/MessageBuilder.h"
 
 
 class ServerCommunicator {
@@ -30,6 +32,8 @@ public:
     bool checkForIncomingMessages();
 
     bool isConnectedToServer() const;
+
+    bool sendMerkleTreeFile(std::string &ahead);
 
 private:
     ServerCommunicator() {}

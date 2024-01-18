@@ -1,16 +1,14 @@
 #include "../../include/fileServices/FileWatcher.h"
+#include "../../include/commandHandlers/HandleSync.h" // Include the HandleSync header
 
-FileWatcher::FileWatcher() : loop(uv_default_loop()), fileChangeDetector(nullptr), isRunning(false) {}
-
+FileWatcher::FileWatcher() : loop(uv_default_loop()), isRunning(false) {}
 
 FileWatcher::~FileWatcher() {
     stop();
-    delete fileChangeDetector; // Clean up
 }
 
 void FileWatcher::initialize(const std::string& directoryPath) {
     directoryToWatch = directoryPath;
-    fileChangeDetector = new FileChangeDetector(directoryPath); // Initialize with the given path
 }
 
 FileWatcher& FileWatcher::getInstance() {
@@ -41,32 +39,8 @@ void FileWatcher::stop() {
 }
 
 void FileWatcher::onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status) {
-    FileWatcher* watcher = static_cast<FileWatcher*>(handle->data);
-    if (watcher && filename) {
-        // Use FileChangeDetector to detect changes
-        auto changes = watcher->fileChangeDetector->detectChanges();
-
-        // Process the detected changes
-        for (const auto& change : changes) {
-            // Here, you can process each change as needed.
-            // For example, you might log the change, update a user interface, or trigger some other action.
-            std::cout << "Change detected: " << change.getFilePath() << std::endl;
-
-            // Implement additional logic based on the type of change
-            switch (change.getChangeType()) {
-                case FileChange::Type::Added:
-                    std::cout << "File added: " << change.getFilePath() << std::endl;
-                    break;
-                case FileChange::Type::Deleted:
-                    std::cout << "File deleted: " << change.getFilePath() << std::endl;
-                    break;
-                case FileChange::Type::Modified:
-                    std::cout << "File modified: " << change.getFilePath() << std::endl;
-                    break;
-            }
-        }
-    }
+    // Create an instance of HandleSync and call the initiateSync method
+    std::string directoryPath = Utility::getDefaultDirectory();
+    HandleSync syncHandler(directoryPath);
+    syncHandler.initiateSync();
 }
-
-
-

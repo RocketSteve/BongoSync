@@ -2,18 +2,12 @@
 #include <iostream>
 
 void HandleShare::initiateShare(const std::string& email) {
-    if (Utility::isLoggedIn()) {
-
-        if (checkWithServer(email)) {
-            std::cout << "Share initiated ...\n" << email << std::endl;
-        } else {
-            std::cout << "Share not initiated ...\n" << email << std::endl;
-        }
-        std::cout << "Initiating share ...\n" << email << std::endl;
+    if (checkWithServer(email)) {
+        std::cout << "Share initiated ...\n" << email << std::endl;
     } else {
-    std::cout << "Not logged in, please start the application\n";
-    return;
+        std::cout << "Share not initiated ...\n" << email << std::endl;
     }
+    std::cout << "Initiating share ...\n" << email << std::endl;
 }
 
 bool HandleShare::checkWithServer(const std::string& email) {

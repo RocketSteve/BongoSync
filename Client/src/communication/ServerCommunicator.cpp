@@ -1,4 +1,5 @@
-#include "../include/communication/ServerCommunicator.h"
+#include "../../include/communication/ServerCommunicator.h"
+#include <thread>
 
 
 ServerCommunicator& ServerCommunicator::getInstance() {
@@ -213,4 +214,84 @@ void ServerCommunicator::processIncomingMessages() {
     }
 }
 
+bool ServerCommunicator::sendMerkleTreeFile(std::string &ahead) {
+    bool clientAhead = (ahead == "client");
+    // Base directory
+    std::string baseDirectory = Utility::getBongoDir();
+
+    // Relative path of the Merkle tree file
+    std::string relativeFilePath = "/tree.json";
+
+    // Full path to the Merkle tree file
+    std::string fullPath = baseDirectory + relativeFilePath;
+
+    // Open the file
+    std::ifstream file(fullPath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << fullPath << std::endl;
+        return false;
+    }
+
+    // Get file size
+    file.seekg(0, std::ios::end);
+    int64_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // Create an instance of MessageBuilder
+    MessageBuilder messageBuilder;
+
+    // Set the necessary fields
+    messageBuilder.setRelativeFilePath(relativeFilePath)
+            .setAhead(clientAhead)
+            .setFileSize(fileSize);
+
+    // Build file metadata message
+    std::string fileMetadata = messageBuilder.buildFileMetadataMessage();
+
+    std::cout << "Sending file metadata: " << fileMetadata << std::endl;
+
+
+    // Get the instance of ServerCommunicator
+    auto& serverCommunicator = ServerCommunicator::getInstance();
+
+    // Send file metadata
+    if (!serverCommunicator.sendMessage(fileMetadata)) {
+        std::cerr << "Failed to send file metadata." << std::endl;
+        file.close();
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // Stream file data
+    // Stream file data
+    char buffer[1024];
+    while (file.read(buffer, sizeof(buffer)) || file.gcount()) {
+        int len = file.gcount();
+        if (send(sockfd, buffer, len, 0) == -1) {
+            std::cerr << "Failed to send file data" << std::endl;
+            file.close();
+            return false;
+        }
+    }
+
+    file.close();
+
+    // Wait for confirmation message
+    std::string confirmationResponse = serverCommunicator.receiveMessage();
+    if (confirmationResponse.empty()) {
+        std::cerr << "No confirmation received" << std::endl;
+        return false;
+    }
+
+    nlohmann::json confirmationJson = nlohmann::json::parse(confirmationResponse);
+    if (confirmationJson["data"]["status"] != "success") {
+        std::cerr << "File transfer failed: " << confirmationJson["data"]["message"].get<std::string>() << std::endl;
+        return false;
+    } else {
+        std::cout << "File transfer successful" << std::endl;
+    }
+
+    return true;
+}
 

@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <fstream>
+#include <arpa/inet.h>
 
 
 
@@ -23,12 +24,26 @@ public:
     static std::string hashPassword(const std::string& password);
     static std::string getDefaultDirectory();
     static std::string getHostnameFromConfig();
+    static std::string getPathFromConfig();
+    static std::string readModifiedAt();
+    static void updateWorkspaceHash(const std::string& newWorkspaceHash);
+    static std::string readWorkspaceHash();
+    static std::pair<std::string, int>  readServerConfig();
 
     static bool confirmPassword(const std::string& password);
     static bool configExists();
-    static bool isLoggedIn();
-    static void LogIn();
-    static void LogOut();
+
+    static bool isValidIPAddress(const std::string& ipAddress);
+    static bool isValidPort(int port);
+
+    static std::string getConfigFilePath();
+    static std::string getBongoDir();
+
+private:
+
+    static nlohmann::json readConfigFile();
+    static void writeConfigFile(const nlohmann::json& config);
+    static std::string getCurrentTimestamp();
 };
 
 #endif //CLIENT_UTILITY_H

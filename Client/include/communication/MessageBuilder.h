@@ -11,6 +11,10 @@ public:
     MessageBuilder& setHostname(const std::string& hostname);
     MessageBuilder& setTreeHash(const std::string& treeHash);
     MessageBuilder& setFilePath(const std::string& filePath);
+    MessageBuilder& setModifiedAt(const std::string& ModifiedAt);
+    MessageBuilder& setFileSize(size_t fileSize);
+    MessageBuilder& setRelativeFilePath(const std::string& relativeFilePath);
+    MessageBuilder& setAhead(bool ahead);
 
     std::string buildFileRequestMessage() const;
     std::string buildRegistrationMessage() const;
@@ -18,6 +22,7 @@ public:
     std::string buildAskIfLatestMessage() const;
     std::string buildDeleteMessage() const;
     std::string buildShareMessage() const;
+    std::string buildFileMetadataMessage() const;
 
 private:
     std::string email;
@@ -25,6 +30,11 @@ private:
     std::string hostname;
     std::string treeHash;
     std::string filePath;
+    std::string modifiedAt;
+
+    std::string relativeFilePath;
+    bool ahead;
+    size_t fileSize;
 };
 
 #endif // MESSAGEBUILDER_H

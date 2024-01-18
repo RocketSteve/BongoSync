@@ -48,6 +48,8 @@ TEST_F(MerkleTreeTest, EmptyDirectory) {
     ASSERT_TRUE(tree->areAllLeavesFiles());
     ASSERT_TRUE(tree->areAllInternalNodesDirectories());
     ASSERT_EQ(tree->getTreeDepth(), 1);
+
+    tree->printTree();
 }
 
 TEST_F(MerkleTreeTest, NonExistentDirectory) {

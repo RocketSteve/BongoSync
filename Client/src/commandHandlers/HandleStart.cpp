@@ -6,7 +6,7 @@ void HandleStart::initiateStart() {
     if (Utility::configExists()) {
         std::string password = Utility::promptForPassword();
         if (validateWithServer(password)) {
-            Utility::LogIn();
+            std::cout << "Logged in successfully\n";
             startFileServices();
         }
     } else {
@@ -38,13 +38,14 @@ bool HandleStart::validateWithServer(const std::string& password) {
         std::string serverIP;
         int serverPort;
 
-        std::cout << "Enter server IP: ";
-        std::cin >> serverIP;
+        auto serverConfig = Utility::readServerConfig();
 
-        std::cout << "Enter server port: ";
-        std::cin >> serverPort;
+        if (serverConfig.first.empty()) {
+            std::cerr << "Failed to get server details from config file.\n";
+            return false;
+        }
 
-        if (!serverCommunicator.connectToServer(serverIP, serverPort)) {
+        if (!serverCommunicator.connectToServer(serverConfig.first, serverConfig.second)) {
             std::cerr << "Failed to connect to server\n";
             return false;
         }
@@ -89,12 +90,23 @@ void HandleStart::startFileServices() {
 }
 
 void HandleStart::startFileWatcherAndSync(const std::string& directoryPath) {
+std::cout << "Starting file watcher and sync ...\n";
     HandleSync syncHandler(directoryPath);
-    fileWatcherThread = std::thread([&]() {
-        syncHandler.initiateSync(); // Initiate initial sync
+    std::cout << "Starting sync ...\n";
+    syncHandler.initiateSync();
+    std::cout << "Sync complete.\n";
+    std::cout << "Starting watcher ...\n";
+    try {
         FileWatcher& watcher = FileWatcher::getInstance();
         watcher.initialize(directoryPath);
-        watcher.start(); // This will run in the background
-    });
+        watcher.start();
+    } catch (const std::exception& e) {
+        std::cerr << "Standard Exception: " << e.what() << std::endl;
+    } catch (const std::string& e) {
+        std::cerr << "String Exception: " << e << std::endl;
+    } catch (...) {
+        std::cerr << "Unknown Exception." << std::endl;
+    }
+    std::cout << "Watcher started.\n";
 }
 
