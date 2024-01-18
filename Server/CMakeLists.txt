@@ -2,17 +2,31 @@ cmake_minimum_required(VERSION 3.26)
 project(Server)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find PostgreSQL and libpqxx
 find_package(PostgreSQL REQUIRED)
-#
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
+if(NOT PQXX_FOUND)
+    message(FATAL_ERROR "libpqxx not found")
+endif()
+pkg_check_modules(BLAKE3 REQUIRED IMPORTED_TARGET libblake3)
+if(NOT BLAKE3_FOUND)
+    message(FATAL_ERROR "blake3 not found")
+endif()
 
-set(LIBPQXX_INCLUDE_DIR "/opt/homebrew/Cellar/libpqxx/7.8.1/include")
-set(LIBPQXX_LIBRARY "/opt/homebrew/Cellar/libpqxx/7.8.1/lib/libpqxx.dylib")
+# Find nlohmann/json
+find_package(nlohmann_json REQUIRED)
+
+# Include the directories of the libraries
+include_directories(${PQXX_INCLUDE_DIRS} ${BLAKE3_INCLUDE_DIRS})
 
 # Add JSON library directory
-add_subdirectory(lib/json)
+# add_subdirectory(lib/json)  # You can remove this line if you're using find_package for nlohmann_json
+
 file(GLOB_RECURSE CLIENT_SOURCES "src/*.cpp")
+
 # Add executable
 add_executable(Server
         ${CLIENT_SOURCES}
@@ -26,28 +40,7 @@ add_executable(Server
         src/Database/WorkspaceManager.cpp
         include/Database/SharedManager.h
         src/Database/SharedManager.cpp
-        include/Database/FilesManager.h
-        src/Database/FilesManager.cpp
-        include/Handlers/RegistrationHandler.h
-        src/Handlers/RegistrationHandler.cpp
-        src/Database/DatabseManager.cpp
-        src/Database/DatabseManager.cpp
-        include/Handlers/HandleLogin.h
-        src/Handlers/HandleLogin.cpp
 )
 
-# Include directories
-target_include_directories(Server PRIVATE
-        "/opt/homebrew/include"
-        ${PostgreSQL_INCLUDE_DIRS}
-        include
-        ${nlohmann_json_INCLUDE_DIRS}
-)
-
-# Link libraries
-target_link_libraries(Server
-        "/opt/homebrew/lib/libpqxx.dylib"
-        nlohmann_json::nlohmann_json
-        ${PostgreSQL_LIBRARIES}
-        # Add other libraries if needed
-)
+# Link the libraries to your executable
+target_link_libraries(Server PUBLIC PkgConfig::PQXX PkgConfig::BLAKE3 nlohmann_json::nlohmann_json)

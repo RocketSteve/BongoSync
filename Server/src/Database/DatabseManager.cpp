@@ -1,4 +1,4 @@
-#include "../include/Database/DatabaseManager.h"
+#include "../../include/Database/DatabaseManager.h"
 
 DatabaseManager::DatabaseManager() {
     try {

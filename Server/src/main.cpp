@@ -1,5 +1,6 @@
 #include "../include/ClientCommunicator.h"
 #include "../include/Database/Database.h"
+#include "../include/Utility.h"
 #include <iostream>
 
 int main() {
@@ -14,8 +15,6 @@ int main() {
     // Initialize and start the communicator
     ClientCommunicator communicator(port);
     communicator.start();
-
-    std::cout << "ClientCommunicator is running on port " << port << std::endl;
 
     // Run indefinitely (or until some condition is met)
     while (true) {

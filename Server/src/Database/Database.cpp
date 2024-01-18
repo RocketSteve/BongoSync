@@ -1,4 +1,4 @@
-#include "../include/Database/Database.h"
+#include "../../include/Database/Database.h"
 
 Database::Database() {
     std::string connectionStr = "postgresql://myappuser:myapppassword@localhost:5432/myappdb";
@@ -69,7 +69,8 @@ void Database::createTables() {
         W.exec("CREATE TABLE IF NOT EXISTS WORKSPACE ("
                "workspace_id SERIAL PRIMARY KEY,"
                "owner_email VARCHAR(255) REFERENCES app_users(email),"
-               "workspace_hash VARCHAR(255));");
+               "workspace_hash VARCHAR(255)),"
+               "modified_at TIMESTAMP;");
 
         // WorkspaceShared table
         W.exec("CREATE TABLE IF NOT EXISTS WORKSPACESHARED ("
@@ -81,7 +82,8 @@ void Database::createTables() {
                "file_id SERIAL PRIMARY KEY,"
                "workspace_id INT REFERENCES WORKSPACE(workspace_id),"
                "file_hash VARCHAR(255),"
-               "file_path VARCHAR(255));");
+               "file_path VARCHAR(255)),"
+               "modified_at TIMESTAMP;");
 
         W.commit();
         std::cout << "Tables created successfully" << std::endl;

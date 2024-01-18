@@ -1,4 +1,4 @@
-#include "../include/Database/FilesManager.h"
+#include "../../include/Database/FilesManager.h"
 
 FilesManager::FilesManager() : dbManager(DatabaseManager::getInstance()) {}
 
@@ -9,8 +9,16 @@ bool FilesManager::addFile(const std::string& ownerEmail, const std::string& fil
         return false;
     }
 
-    std::vector<std::string> values = {std::to_string(workspaceId), fileHash, filePath};
-        std::vector<std::string> columns = {"workspace_id", "file_hash", "file_path"};
+    // Generate the current timestamp
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm now_tm = *std::localtime(&now_time_t);
+    std::stringstream ss;
+    ss << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+    std::string currentTimestamp = ss.str();
+
+    std::vector<std::string> values = {std::to_string(workspaceId), fileHash, filePath, currentTimestamp};
+        std::vector<std::string> columns = {"workspace_id", "file_hash", "file_path", "modified_at"};
 
     return dbManager.createRecord("files", columns,  values);
 }

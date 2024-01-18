@@ -11,6 +11,9 @@
 #include "Handlers/RegistrationHandler.h"
 #include "Communciation/MessageBuilder.h"
 #include "Handlers/HandleLogin.h"
+#include "Handlers/SyncHandler.h"
+#include "Communciation/Session.h"
+#include "Communciation/SessionManager.h"
 
 class ClientCommunicator {
 public:
@@ -27,7 +30,7 @@ private:
 
     void listenForClients();
     void handleClient(int clientSocket);
-    void handleFileReception(int clientSocket, const std::string& filePath, int64_t fileSize);
+    void handleFileReception(int clientSocket, const std::string& targetPath, const std::string& originalFilePath, int64_t fileSize);
     int setupServerSocket() const;
     void closeServerSocket() const;
 };

@@ -1,12 +1,12 @@
-#include "../include/Database/UserManager.h"
+#include "../../include/Database/UserManager.h"
 
 UserManager::UserManager() : dbManager(DatabaseManager::getInstance()) {}
 
 
-bool UserManager::addUser(const std::string& email, const std::string& hostname, const std::string& passwordHash) {
+bool UserManager::addUser(const std::string& email, const std::string& hostname, const std::string& passwordHash, const std::string& workspaceHash){
     try {
         WorkspaceManager workspaceManager;
-        if (!workspaceManager.createWorkspace(email, "")) {
+        if (!workspaceManager.createWorkspace(email, workspaceHash)) {
             return false;
         }
         std::string workspaceId = std::to_string(workspaceManager.getWorkspaceIdByEmail(email));

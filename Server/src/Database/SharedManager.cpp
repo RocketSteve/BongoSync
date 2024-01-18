@@ -1,4 +1,4 @@
-#include "../include/Database/SharedManager.h"
+#include "../../include/Database/SharedManager.h"
 #include <iostream>
 
 SharedManager::SharedManager() : dbManager(DatabaseManager::getInstance()) {

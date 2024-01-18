@@ -13,6 +13,7 @@ public:
     bool updateWorkspaceByEmail(const std::string& ownerEmail, const std::string& newWorkspaceHash);
     bool deleteWorkspaceByEmail(const std::string& ownerEmail);
     int getWorkspaceIdByEmail(const std::string& ownerEmail);
+    std::string getModifiedAtByUserEmail(const std::string& userEmail);
 
 private:
     DatabaseManager& dbManager;
