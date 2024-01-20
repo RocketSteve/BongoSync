@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <iostream>
 
+
 MerkleTree::MerkleTree() : root(nullptr) {}
 
 MerkleTree::~MerkleTree() {}
@@ -24,8 +25,8 @@ void MerkleTree::buildTreeRecursive(std::shared_ptr<Node> &node, const std::file
     std::filesystem::path defaultDirectory = "files";
     if (std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            // Get the relative path from the default directory
-            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), defaultDirectory);
+            // Get the relative path from the top directory
+            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), path);
 
             auto child = std::make_shared<Node>(relativePath.string());
             node->children.push_back(child);
@@ -40,7 +41,6 @@ void MerkleTree::buildTreeRecursive(std::shared_ptr<Node> &node, const std::file
         node->hash = combineHashes(node->children);
     }
 }
-
 std::shared_ptr<MerkleTree::Node> MerkleTree::getRoot() const {
     return root;
 }

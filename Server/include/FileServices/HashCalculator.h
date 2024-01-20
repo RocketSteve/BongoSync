@@ -12,6 +12,7 @@
 class HashCalculator {
 public:
     static std::string calculateHash(const std::string& filePath);
+    static std::string getFileContent(const std::string& filePath);
 };
 
 #endif // HASHCALCULATOR_H

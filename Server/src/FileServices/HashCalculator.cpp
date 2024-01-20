@@ -1,4 +1,5 @@
 #include "../../include/FileServices/HashCalculator.h"
+#include <iostream>
 
 
 std::string HashCalculator::calculateHash(const std::string& input) {
@@ -24,4 +25,15 @@ std::string HashCalculator::calculateHash(const std::string& input) {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
     }
     return ss.str();
+}
+
+std::string HashCalculator::getFileContent(const std::string& filePath) {
+    std::ifstream fileStream(filePath);
+    if (!fileStream) {
+        std::cerr << "Failed to open file: " << filePath << std::endl;
+        return "";
+    }
+    std::string fileContent((std::istreambuf_iterator<char>(fileStream)),
+                            std::istreambuf_iterator<char>());
+    return fileContent;
 }
