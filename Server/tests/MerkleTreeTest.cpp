@@ -13,7 +13,6 @@ protected:
 
     void TearDown() override {
         // Cleanup code, if needed
-        std::filesystem::remove("test_tree.json");
     }
 
     // Utility function to create a simple test directory structure
@@ -38,16 +37,30 @@ TEST_F(MerkleTreeTest, SerializationTest) {
 }
 
 TEST_F(MerkleTreeTest, DeserializationTest) {
+    // Create a test directory with a known structure
     createTestDirectory("test_dir");
+
+    // Build a MerkleTree from the test directory and serialize it to a file
     MerkleTree serializedTree;
     serializedTree.buildTree("test_dir");
     serializedTree.saveToFile("test_tree.json");
-    // Assuming 'SerializationTest' has been run and 'test_tree.json' exists
+
+    // Deserialize the MerkleTree from the file
     MerkleTree deserializedTree = MerkleTree::loadFromFile("test_tree.json");
+
+    // Optional: Print the tree for visual inspection
     deserializedTree.printTree();
+
+    // Assertions to check the integrity of the deserialized tree
     ASSERT_NE(deserializedTree.getRoot(), nullptr);
-    ASSERT_EQ(deserializedTree.getRoot()->children.size(), 3); // Replace with actual expected values
+
+    // Ensure the root has the correct number of children
+    // This number should match the number of top-level entries in the test_dir
+    // Replace 'expectedNumberOfChildren' with the actual expected value based on 'createTestDirectory'
+    size_t expectedNumberOfChildren = 3; // Example value, adjust as needed
+    ASSERT_EQ(deserializedTree.getRoot()->children.size(), expectedNumberOfChildren);
 }
+
 
 TEST_F(MerkleTreeTest, RoundTripTest) {
     createTestDirectory("test_dir");

@@ -90,19 +90,36 @@ void MerkleTree::saveToFile(const std::string& filePath) const {
 }
 
 void MerkleTree::deserializeTreeFromJson(std::shared_ptr<Node>& node, const nlohmann::json& jsonNode) {
-    if (jsonNode.is_null()) return;
+    if (jsonNode.is_null() || !jsonNode.is_object()) return;
 
     node = std::make_shared<Node>(jsonNode["path"]);
     node->hash = jsonNode["hash"];
 
     if (jsonNode.contains("children")) {
-        for (const auto& childJson : jsonNode["children"]) {
-            std::shared_ptr<Node> child;
-            deserializeTreeFromJson(child, childJson);
-            node->children.push_back(child);
+        if (jsonNode["children"].is_array()) {
+            for (const auto& childItem : jsonNode["children"]) {
+                // Check if the child is an object (direct child) or an array (nested structure)
+                if (childItem.is_object()) {
+                    std::shared_ptr<Node> child;
+                    deserializeTreeFromJson(child, childItem);
+                    node->children.push_back(child);
+                } else if (childItem.is_array()) {
+                    // Handle the nested array case
+                    for (const auto& nestedChildJson : childItem) {
+                        if (nestedChildJson.is_object()) {
+                            std::shared_ptr<Node> nestedChild;
+                            deserializeTreeFromJson(nestedChild, nestedChildJson);
+                            node->children.push_back(nestedChild);
+                        }
+                    }
+                }
+            }
         }
     }
 }
+
+
+
 
 std::shared_ptr<MerkleTree::Node> MerkleTree::Node::findChildByPath(const std::string& path) const {
     for (const auto& child : children) {

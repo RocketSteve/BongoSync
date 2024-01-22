@@ -57,16 +57,20 @@ std::string SyncHandler::compareTimestamps(const std::string& userEmail, const s
 }
 
 void SyncHandler::treeReception(bool ahead, const std::string& userEmail) {
+    std::cout << "Receiving tree from " << "client" << "..." << std::endl;
     std::string directoryPath = getDirectoryPath(userEmail);
+    std::cout << "Directory path: " << directoryPath << std::endl;
     // Load and deserialize the Merkle Tree from file
-    MerkleTree merkleTree;
-    std::string serializedTree = merkleTree.loadTreeFromFile();
-    merkleTree.deserializeTree(serializedTree);
+    MerkleTree merkleTree = MerkleTree::loadFromFile("tree/tree.json");
 
     // Load the current tree from the "files" directory
     MerkleTree currentTree;
     currentTree.buildTree(directoryPath);
 
+    std::cout << "Current tree:" << std::endl;
+    currentTree.printTree();
+    std::cout << "Received tree:" << std::endl;
+    merkleTree.printTree();
     // Instantiate MerkleTreeComparer with the correct order of trees
     MerkleTreeComparer treeComparer(ahead ? merkleTree : currentTree, ahead ? currentTree : merkleTree);
 
