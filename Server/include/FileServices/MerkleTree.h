@@ -42,15 +42,17 @@ public:
     bool areAllInternalNodesDirectories() const;
     int getTreeDepth() const;
 
-    void deserializeTree(const std::string& serializedTree);
-    void deserializeNode(const nlohmann::json& nodeJson, std::shared_ptr<Node>& node);
-    std::string loadTreeFromFile();
 
-    void saveTreeToFile(const std::string& serializedTree);
-    void serializeNode(nlohmann::json& parentJson, const std::shared_ptr<Node>& node) const;
-    std::string serializeTree() const;
+    static MerkleTree loadFromFile(const std::string& filePath);
+
+    void saveToFile(const std::string& filePath) const;
+
+
 
 private:
+    void deserializeTreeFromJson(std::shared_ptr<Node>& node, const nlohmann::json& jsonNode);
+    void serializeTreeToJson(const std::shared_ptr<Node>& node, nlohmann::json& jsonNode) const;
+
     std::shared_ptr<Node> root;
     void buildTreeRecursive(std::shared_ptr<Node>& node, const std::filesystem::path& path);
     std::string combineHashes(const std::vector<std::shared_ptr<Node>>& children) const;

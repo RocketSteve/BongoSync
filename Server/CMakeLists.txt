@@ -64,7 +64,8 @@ add_executable(ServerTest
         src/FileServices/MerkleTree.cpp
     include/FileServices/MerkleTree.h
         include/FileServices/HashCalculator.h
-        src/FileServices/HashCalculator.cpp)
+        src/FileServices/HashCalculator.cpp
+        tests/MerkleTreeTest.cpp)
 
 
 target_link_libraries(ServerTest PUBLIC PkgConfig::PQXX PkgConfig::BLAKE3 nlohmann_json::nlohmann_json PkgConfig::GTEST)

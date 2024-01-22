@@ -224,7 +224,7 @@ void ClientCommunicator::handleClient(int clientSocket) {
 
 
 
-                    SyncHandler::treeReception(ahead);
+                    SyncHandler::treeReception(ahead, userEmail);
                     std::cout << "Merkle tree received" << std::endl;
                 } else {
                     std::string serverMessage = R"({"message": "Hello from Server!"})";

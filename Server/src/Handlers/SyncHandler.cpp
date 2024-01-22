@@ -56,14 +56,19 @@ std::string SyncHandler::compareTimestamps(const std::string& userEmail, const s
     }
 }
 
-void SyncHandler::treeReception(bool ahead) {
+void SyncHandler::treeReception(bool ahead, const std::string& userEmail) {
+    std::string directoryPath = getDirectoryPath(userEmail);
     // Load and deserialize the Merkle Tree from file
     MerkleTree merkleTree;
     std::string serializedTree = merkleTree.loadTreeFromFile();
     merkleTree.deserializeTree(serializedTree);
 
-    // Instantiate MerkleTreeComparer with the deserialized tree
-    MerkleTreeComparer treeComparer(merkleTree);
+    // Load the current tree from the "files" directory
+    MerkleTree currentTree;
+    currentTree.buildTree(directoryPath);
+
+    // Instantiate MerkleTreeComparer with the correct order of trees
+    MerkleTreeComparer treeComparer(ahead ? merkleTree : currentTree, ahead ? currentTree : merkleTree);
 
     // Perform the comparison
     treeComparer.compare();
@@ -90,4 +95,11 @@ void SyncHandler::treeReception(bool ahead) {
     for (const auto& node : modifiedNodes) {
         std::cout << " - Modified: " << node << std::endl;
     }
+}
+
+std::string SyncHandler::getDirectoryPath(const std::string& userEmail) {
+    std::string query = "SELECT hostname FROM app_users WHERE email = $1;";
+    std::vector<std::string> values = {userEmail};
+
+    return DatabaseManager::getInstance().readCustomRecord(query, values);
 }

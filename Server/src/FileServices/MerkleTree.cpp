@@ -21,26 +21,30 @@ std::string MerkleTree::getTreeHash() const {
     return root ? root->hash : "";
 }
 
-void MerkleTree::buildTreeRecursive(std::shared_ptr<Node> &node, const std::filesystem::path &path) {
-    std::filesystem::path defaultDirectory = "files";
+void MerkleTree::buildTreeRecursive(std::shared_ptr<Node>& node, const std::filesystem::path& path) {
     if (std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
             // Get the relative path from the top directory
-            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), path);
+            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), root->path);
 
+            // Create a new node with the relative path
             auto child = std::make_shared<Node>(relativePath.string());
             node->children.push_back(child);
 
+            // If the entry is a directory, recursively build the tree for this directory
             if (std::filesystem::is_directory(entry.path())) {
                 buildTreeRecursive(child, entry.path());
             } else {
+                // If the entry is a file, calculate its hash and set isFile to true
                 child->hash = HashCalculator::calculateHash(relativePath.string());
                 child->isFile = true;
             }
         }
+        // After processing all children, calculate the hash for the current node
         node->hash = combineHashes(node->children);
     }
 }
+
 std::shared_ptr<MerkleTree::Node> MerkleTree::getRoot() const {
     return root;
 }
@@ -53,82 +57,49 @@ std::string MerkleTree::combineHashes(const std::vector<std::shared_ptr<Node>>& 
     return HashCalculator::calculateHash(combinedHashes);
 }
 
+MerkleTree MerkleTree::loadFromFile(const std::string& filePath) {
+    MerkleTree tree;
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filePath << std::endl;
+        return tree; // Return an empty tree if file can't be opened
+    }
 
-std::string MerkleTree::serializeTree() const {
     nlohmann::json treeJson;
-
-    serializeNode(treeJson, root);
-    return treeJson.dump();
+    file >> treeJson;
+    tree.deserializeTreeFromJson(tree.root, treeJson);
+    return tree;
 }
 
-void MerkleTree::serializeNode(nlohmann::json& parentJson, const std::shared_ptr<Node>& node) const {
+void MerkleTree::serializeTreeToJson(const std::shared_ptr<Node>& node, nlohmann::json& jsonNode) const {
     if (!node) return;
-
-    // Serialize the current node
-    nlohmann::json nodeJson;
-    nodeJson["path"] = node->path;
-    nodeJson["hash"] = node->hash;
-    // Serialize children
+    jsonNode["hash"] = node->hash;
+    jsonNode["path"] = node->path;
     for (const auto& child : node->children) {
         nlohmann::json childJson;
-        serializeNode(childJson, child);
-        nodeJson["children"].push_back(childJson);
-    }
-    parentJson.push_back(nodeJson);
-}
-
-void MerkleTree::saveTreeToFile(const std::string& serializedTree) {
-    std::filesystem::path bongoDir = std::filesystem::path(getenv("HOME")) / ".bongo";
-    std::filesystem::create_directories(bongoDir);
-    std::filesystem::path filePath = bongoDir / "tree.json";
-
-    std::ofstream fileStream(filePath);
-    if (fileStream) {
-        fileStream << serializedTree;
-        std::cout << "MerkleTree saved to: " << filePath << std::endl;
-    } else {
-        std::cerr << "Failed to save MerkleTree to file: " << filePath << std::endl;
+        serializeTreeToJson(child, childJson);
+        jsonNode["children"].push_back(childJson);
     }
 }
 
-std::string MerkleTree::loadTreeFromFile() {
-    std::filesystem::path filePath = "tree/tree.json";
-
-    std::ifstream fileStream(filePath);
-    if (!fileStream) {
-        std::cerr << "Failed to open MerkleTree file: " << filePath << std::endl;
-        return "";
-    }
-    std::string serializedTree((std::istreambuf_iterator<char>(fileStream)),
-                               std::istreambuf_iterator<char>());
-
-    std::cout << "MerkleTree: " << serializedTree << std::endl;
-    return serializedTree;
+void MerkleTree::saveToFile(const std::string& filePath) const {
+    nlohmann::json treeJson;
+    serializeTreeToJson(root, treeJson);
+    std::ofstream file(filePath);
+    file << treeJson.dump();
 }
 
-void MerkleTree::deserializeTree(const std::string& serializedTree) {
-    nlohmann::json treeJson = nlohmann::json::parse(serializedTree);
+void MerkleTree::deserializeTreeFromJson(std::shared_ptr<Node>& node, const nlohmann::json& jsonNode) {
+    if (jsonNode.is_null()) return;
 
-    if (!treeJson.empty() && treeJson.is_array()) {
-        deserializeNode(treeJson[0], root);
-    }
-}
+    node = std::make_shared<Node>(jsonNode["path"]);
+    node->hash = jsonNode["hash"];
 
-void MerkleTree::deserializeNode(const nlohmann::json& nodeJson, std::shared_ptr<Node>& node) {
-    if (!nodeJson.contains("path")) return;
-
-    // Create a new node with the path
-    node = std::make_shared<Node>(nodeJson["path"]);
-
-    // Set hash and other properties
-    node->hash = nodeJson.value("hash", "");
-
-    // Deserialize children
-    if (nodeJson.contains("children")) {
-        for (const auto& childJson : nodeJson["children"]) {
-            auto child = std::make_shared<Node>(""); // Temporary empty path, will be set in recursion
+    if (jsonNode.contains("children")) {
+        for (const auto& childJson : jsonNode["children"]) {
+            std::shared_ptr<Node> child;
+            deserializeTreeFromJson(child, childJson);
             node->children.push_back(child);
-            deserializeNode(childJson, child);
         }
     }
 }
@@ -249,8 +220,9 @@ void MerkleTree::printTreeRecursive(std::shared_ptr<Node> node, int depth, const
     std::cout << (node->isFile ? "Leaf" : "Internal") << " Node: ";
     std::cout << "Path: " << node->path << ", Hash: " << node->hash << std::endl;
 
+    // Print children
     for (const auto& child : node->children) {
-        printTreeRecursive(child, depth + 1, node->isFile ? "File" : "Dir");
+        printTreeRecursive(child, depth + 1, "Dir");
     }
 }
 

@@ -7,7 +7,7 @@
 
 class MerkleTreeComparer {
 public:
-    explicit MerkleTreeComparer(const MerkleTree& baseTree, const std::string& currentTreePath);
+    MerkleTreeComparer(const MerkleTree& baseTree, const MerkleTree& currentTree);
     void compare();
     std::vector<std::string> getAddedNodes() const;
     std::vector<std::string> getRemovedNodes() const;

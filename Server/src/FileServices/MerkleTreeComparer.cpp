@@ -1,9 +1,16 @@
 #include "../../include/FileServices/MerkleTreeComparer.h"
 #include <filesystem>
+#include <iostream>
 
-MerkleTreeComparer::MerkleTreeComparer(const MerkleTree& baseTree, const std::string& currentTreePath) : baseTree(baseTree) {
-    currentTree.buildTree(currentTreePath);
-    currentTree.printTree();
+MerkleTreeComparer::MerkleTreeComparer(const MerkleTree& baseTree, const MerkleTree& currentTree)
+        : baseTree(baseTree), currentTree(currentTree) {
+    std::cout << "<><><><><><>" << std::endl;
+    std::cout << "Base tree:\n";
+    this->currentTree.printTree();
+    std::cout << "<><><><><><>" << std::endl;
+    std::cout << "Current tree:\n";
+    this->currentTree.printTree();
+    std::cout << "<><><><><><>" << std::endl;
 }
 
 void MerkleTreeComparer::compare() {
