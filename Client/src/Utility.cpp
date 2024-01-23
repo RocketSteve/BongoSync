@@ -9,9 +9,10 @@ std::string Utility::promptForEmail() {
 }
 
 std::string Utility::getHostname() {
-    return "files";
+    char hostname[1024];
+    gethostname(hostname, 1024);
+    return std::string(hostname);
 }
-
 
 
 std::string Utility::getEmailFromConfig() {

@@ -98,6 +98,7 @@ void ClientCommunicator::handleClient(int clientSocket) {
     fd.events = POLLIN;
 
     std::string userEmail = "";
+    std::string hostname = "";
 
     while (true) {
         int ret = poll(&fd, 1, 5000);
@@ -162,6 +163,14 @@ void ClientCommunicator::handleClient(int clientSocket) {
 
                     userEmail = email;
 
+                    std::string query = "SELECT hostname FROM app_users WHERE email = $1;";
+                    std::vector<std::string> values = {userEmail};
+
+                    DatabaseManager& dbManager = DatabaseManager::getInstance();
+                    hostname = dbManager.readCustomRecord(query, values);
+
+                    std::cout << "Hostname: " << hostname << std::endl;
+
                     bool loginResult = HandleLogin::checkCredentials(email, passwordHash);
 
                     MessageBuilder messageBuilder;
@@ -222,10 +231,59 @@ void ClientCommunicator::handleClient(int clientSocket) {
 
                     handleFileReception(clientSocket, "tree", filePath, fileSize);
 
-
-
-                    SyncHandler::treeReception(ahead, userEmail);
+                    std::vector<std::string> addedFiles = SyncHandler::treeReception(ahead, userEmail);
                     std::cout << "Merkle tree received" << std::endl;
+
+                    if (addedFiles.empty()) {
+                        std::cout << "No files to send" << std::endl;
+
+                        // Create a JSON message indicating that no sync is needed
+                        nlohmann::json noSyncNeededJson;
+                        noSyncNeededJson["action"] = "no_sync_needed";
+                        std::string noSyncNeededMessage = noSyncNeededJson.dump();
+
+                        // Send the message to the client
+                        send(clientSocket, noSyncNeededMessage.c_str(), noSyncNeededMessage.length(), 0);
+
+                        continue;
+                    } else {
+
+                        for (size_t i = 0; i < addedFiles.size(); ++i) {
+                            nlohmann::json requestFileJson;
+                            requestFileJson["action"] = "request_file";
+                            requestFileJson["data"]["filePath"] = addedFiles[i];
+                            requestFileJson["data"]["remaining_files"] = addedFiles.size() - i;
+                            std::cout << "Sending request for file: " << requestFileJson << std::endl;
+                            std::string requestFileMessage = requestFileJson.dump();
+                            send(clientSocket, requestFileMessage.c_str(), requestFileMessage.length(), 0);
+
+                            // Wait for a "file_transfer" message from the client
+                            nlohmann::json fileMetadataJson;
+                            ssize_t bytesRead = recv(clientSocket, buffer, bufferSize - 1, 0);
+                            if (bytesRead > 0) {
+                                buffer[bytesRead] = '\0'; // Null-terminate the string
+                                fileMetadataJson = nlohmann::json::parse(buffer);
+                                if (fileMetadataJson["action"] == "file_transfer") {
+                                    std::cout << "Received file metadata from client: " << fileMetadataJson << std::endl;
+
+                                    // Extract file size and file path from the file metadata
+                                    int64_t fileSize = fileMetadataJson["data"]["file_size"];
+                                    std::string originalFilePath = fileMetadataJson["data"]["file_name"];
+
+                                    // Receive the file from the client
+                                    handleFileReception(clientSocket, hostname, originalFilePath, fileSize);
+                                }
+                            }
+                        }
+                    }
+                    MerkleTree localTree;
+                    localTree.buildTree(hostname);
+
+                    WorkspaceManager workspaceManager;
+                    std::string newWorkspaceHash = localTree.getTreeHash();
+                    workspaceManager.updateWorkspaceByEmail(userEmail, newWorkspaceHash);
+
+
                 } else {
                     std::string serverMessage = R"({"message": "Hello from Server!"})";
                     std::cout << "Sending message: " << serverMessage << std::endl;
@@ -254,6 +312,8 @@ void ClientCommunicator::handleFileReception(int clientSocket, const std::string
     // Construct the new file path
     std::filesystem::path newFilePath = targetDir / filename;
 
+    std::cout << "Receiving file to: " << newFilePath << std::endl;
+
     std::ofstream outputFile(newFilePath, std::ios::binary);
     if (!outputFile.is_open()) {
         std::cerr << "Failed to open file for writing: " << newFilePath << std::endl;
@@ -266,6 +326,7 @@ void ClientCommunicator::handleFileReception(int clientSocket, const std::string
     char buffer[bufferSize];
 
     while (totalBytesReceived < fileSize) {
+        std::cout << "Received bytes: " << totalBytesReceived << std::endl;
         ssize_t bytesRead = recv(clientSocket, buffer, std::min(fileSize - totalBytesReceived, (int64_t)bufferSize), 0);
         if (bytesRead <= 0) {
             std::cerr << "Error receiving file data or connection closed" << std::endl;

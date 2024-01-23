@@ -43,10 +43,8 @@ public:
     bool areAllInternalNodesDirectories() const;
     int getTreeDepth() const;
 
-    std::string serializeTree() const;
-    void serializeNode(nlohmann::json& parentJson, const std::shared_ptr<Node>& node) const;
-    void saveTreeToFile(const std::string& serializedTree);
-
+    void serializeTreeToJson(const std::shared_ptr<Node>& node, nlohmann::json& jsonNode) const;
+    void saveToFile(const std::string& filePath) const;
 private:
     std::shared_ptr<Node> root;
     void buildTreeRecursive(std::shared_ptr<Node>& node, const std::filesystem::path& path);

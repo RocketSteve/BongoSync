@@ -102,7 +102,7 @@ std::string DatabaseManager::readRecord(const std::string& table, int id) {
     }
 }
 
-bool DatabaseManager::updateRecord(const std::string& table, const std::string& column, int id, const std::string& newData) {
+bool DatabaseManager::updateRecord(const std::string& table, const std::string& column, const std::string& idColumn, int id, const std::string& newData) {
     try {
         pqxx::work W(C);
 
@@ -110,7 +110,7 @@ bool DatabaseManager::updateRecord(const std::string& table, const std::string& 
         std::ostringstream query;
         query << "UPDATE " << table
               << " SET " << column << " = " << W.quote(newData)
-              << " WHERE id = " << W.quote(id) << ";";
+              << " WHERE " << idColumn << " = " << W.quote(id) << ";";
 
         // Execute the query
         W.exec(query.str());

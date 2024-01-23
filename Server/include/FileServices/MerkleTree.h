@@ -34,6 +34,7 @@ public:
     std::shared_ptr<MerkleTree::Node> getRoot() const;
     void printTree();
 
+
     int getNumberOfNodes() const;
     std::string getNodeHash(const std::string& path) const;
     bool isChildOf(const std::string& parentPath, const std::string& childPath) const;
@@ -50,6 +51,9 @@ public:
 
 
 private:
+
+
+    bool isFile(const std::string& entryName);
     void deserializeTreeFromJson(std::shared_ptr<Node>& node, const nlohmann::json& jsonNode);
     void serializeTreeToJson(const std::shared_ptr<Node>& node, nlohmann::json& jsonNode) const;
 

@@ -38,11 +38,11 @@ bool WorkspaceManager::updateWorkspaceByEmail(const std::string& ownerEmail, con
         std::string currentTimestamp = ss.str();
 
         // Update the workspace hash
-        if (!dbManager.updateRecord("WORKSPACE", "workspace_hash", workspaceId, newWorkspaceHash)) {
+        if (!dbManager.updateRecord("WORKSPACE", "workspace_hash", "workspace_id", workspaceId, newWorkspaceHash)) {
             return false;
         }
 
-        return dbManager.updateRecord("WORKSPACE", "modified_at", workspaceId, currentTimestamp);
+        return dbManager.updateRecord("WORKSPACE", "modified_at", "workspace_id", workspaceId, currentTimestamp);
     } catch (const std::exception& e) {
         std::cerr << "Error updating workspace: " << e.what() << std::endl;
         return false;

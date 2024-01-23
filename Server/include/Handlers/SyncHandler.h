@@ -13,7 +13,7 @@ class SyncHandler {
 public:
     static bool isLatestVersion(const std::string& treeHash, const std::string& ownerEmail, const std::string& modifiedAt);
     static std::string compareTimestamps(const std::string& userEmail, const std::string& clientModifiedAt);
-    static void treeReception(bool ahead, const std::string& userEmail);
+    static std::vector<std::string> treeReception(bool ahead, const std::string& userEmail);
     static std::string getDirectoryPath(const std::string& userEmail);
 };
 

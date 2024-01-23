@@ -19,6 +19,7 @@ public:
     void initiateSync();
     void onFileChangeDetected();
     void synchronizeFiles();
+    void handleServerResponse();
 
 private:
     MerkleTree merkleTree;

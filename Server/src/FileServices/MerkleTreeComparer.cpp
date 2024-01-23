@@ -48,13 +48,17 @@ void MerkleTreeComparer::compareTrees(std::shared_ptr<MerkleTree::Node> baseNode
         return;
     }
 
+    std::cout << "Base node hash: " << baseNode->hash << std::endl;
+    std::cout << "Current node hash: " << currentNode->hash << std::endl;
+    std::cout << "Current node isFile: " << (currentNode->isFile ? "true" : "false") << std::endl;
+
     // If both nodes are present but hashes are different (modified node)
     if (baseNode->hash != currentNode->hash && currentNode->isFile) {
-        std::string baseFileContent = HashCalculator::getFileContent(baseNode->path);
-        std::string currentFileContent = HashCalculator::getFileContent(currentNode->path);
-        if (baseFileContent != currentFileContent) {
-            modifiedNodes.push_back(currentNode->path);
-        }
+        modifiedNodes.push_back(currentNode->path);
+        std::cout << "Added modifed node: " << currentNode->path << std::endl;
+
+        removedNodes.push_back(baseNode->path);
+        addedNodes.push_back(currentNode->path);
     }
 
     // Create maps for children of both nodes for efficient lookup

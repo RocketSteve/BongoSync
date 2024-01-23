@@ -57,9 +57,6 @@ void HandleSync::initiateSync() {
     } else {
         std::cout << "Error during synchronization.\n";
     }
-
-    std::thread updateListenerThread(&HandleSync::listenForUpdates, this);
-    updateListenerThread.detach();
 }
 
 bool HandleSync::checkWithServer(const std::string& currentHash, const std::string& hostname, const std::string& modifiedAt) {
@@ -108,7 +105,7 @@ bool HandleSync::checkWithServer(const std::string& currentHash, const std::stri
             std::string directoryPath = Utility::getPathFromConfig();
             tree.buildTree(directoryPath);
 
-            tree.serializeTree();
+            tree.saveToFile(directoryPath + "/.bongo/tree.json");
 
             if (!serverCommunicator.sendMerkleTreeFile(ahead)) {
                 std::cerr << "Failed to transfer Merkle tree to server.\n";
@@ -117,7 +114,7 @@ bool HandleSync::checkWithServer(const std::string& currentHash, const std::stri
                 std::cout << "Merkle tree sent to server.\n";
             }
 
-
+            handleServerResponse();
 
             return true;
         } else {
@@ -162,4 +159,56 @@ void HandleSync::listenForUpdates() {
 }
 
 
+void HandleSync::handleServerResponse() {
+    std::cout  << "Handling server response ...\n";
+    // Receive the response
+    std::string responseStr = ServerCommunicator::getInstance().receiveMessage();
+    if (responseStr.empty()) {
+        std::cerr << "Failed to receive response from server.\n";
+        return;
+    }
 
+    // Parse the response
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr);
+
+    // Handle the response based on its type
+    std::string responseType = responseJson.value("action", "");
+
+    if (responseType == "no_sync_needed") {
+        std::cout << "Server response: No synchronization needed.\n";
+    } else if (responseType == "request_file") {
+        std::cout << "Server response: Files requested\n";
+
+
+        int remainingFiles = responseJson["data"].value("remaining_files", 0);
+        for (int i = remainingFiles; i > 0; i--) {
+            std::cout << "Remaining files: " << i << std::endl;
+            std::string filePath = responseJson["data"].value("filePath", "");
+            std::string defaultDirectory = Utility::getDefaultDirectory();
+            std::string fullPath = defaultDirectory + "/" + filePath;
+            std::cout << "Full file path: " << fullPath << "\n";
+
+            sendFileToServer(fullPath);
+            std::cout << "Remaining files: " << i << std::endl;
+
+            // If all files have been sent, break the loop
+            if (i == 1) {
+                break;
+            }
+
+            // Receive the next response
+            responseStr = ServerCommunicator::getInstance().receiveMessage();
+            if (responseStr.empty()) {
+                std::cerr << "Failed to receive response from server.\n";
+                return;
+            }
+
+            // Parse the next response
+            responseJson = nlohmann::json::parse(responseStr);
+
+        }
+    } else {
+        std::cerr << "Unexpected server response.\n";
+    }
+    std::cout << "Server response handled.\n";
+}

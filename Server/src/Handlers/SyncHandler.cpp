@@ -50,13 +50,13 @@ std::string SyncHandler::compareTimestamps(const std::string& userEmail, const s
     std::cout << "Server time: " << serverTime.time_since_epoch().count() << std::endl;
 
     if (clientTime > serverTime) {
-        return "client";
-    } else {
         return "server";
+    } else {
+        return "client";
     }
 }
 
-void SyncHandler::treeReception(bool ahead, const std::string& userEmail) {
+std::vector<std::string> SyncHandler::treeReception(bool ahead, const std::string& userEmail) {
     std::cout << "Receiving tree from " << "client" << "..." << std::endl;
     std::string directoryPath = getDirectoryPath(userEmail);
     std::cout << "Directory path: " << directoryPath << std::endl;
@@ -84,21 +84,31 @@ void SyncHandler::treeReception(bool ahead, const std::string& userEmail) {
 
     // Print the changes
     std::cout << "Detected changes:" << std::endl;
-    
+
     // Print added nodes
     for (const auto& node : addedNodes) {
         std::cout << " - Added: " << node << std::endl;
     }
 
-    // Print removed nodes
-    for (const auto& node : removedNodes) {
-        std::cout << " - Deleted: " << node << std::endl;
-    }
-
-    // Print modified nodes
     for (const auto& node : modifiedNodes) {
         std::cout << " - Modified: " << node << std::endl;
     }
+
+    // Print removed nodes
+    for (const auto& node : removedNodes) {
+        std::cout << " - Deleted: " << node << std::endl;
+
+        if (std::filesystem::remove(directoryPath + "/" + node)) {
+            std::cout << "Successfully deleted file: " << node << std::endl;
+
+            MerkleTree localTree;
+            localTree.buildTree(directoryPath);
+        } else {
+            std::cerr << "Failed to delete file: " << node << std::endl;
+        }
+    }
+    return addedNodes;
+
 }
 
 std::string SyncHandler::getDirectoryPath(const std::string& userEmail) {

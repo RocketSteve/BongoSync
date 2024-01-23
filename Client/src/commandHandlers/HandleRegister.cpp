@@ -46,6 +46,7 @@ void HandleRegister::initiateRegistration() {
         std::cout << "Registration failed\n";
         initiateRegistration();
     } else {
+        std::cout << "Registration successful\n";
         createConfigFile(email, hostname, serverIP, serverPort);
 
         MerkleTree merkleTree;
@@ -136,7 +137,6 @@ bool HandleRegister::checkWithServer(const std::string& email, const std::string
     }
 }
 
-
 void HandleRegister::createConfigFile(const std::string& email, const std::string& hostname, const std::string& serverIP, int serverPort) {
     std::cout << "Creating config file ...\n";
     const std::string filesDir = std::filesystem::current_path() / hostname;
@@ -144,7 +144,12 @@ void HandleRegister::createConfigFile(const std::string& email, const std::strin
     const std::string configFile = configDir + "/config.json";
 
     // Create the hidden directory if it does not exist
-    std::filesystem::create_directories(configDir);
+    if (!std::filesystem::exists(configDir)) {
+        if (!std::filesystem::create_directories(configDir)) {
+            std::cerr << "Failed to create directory: " << configDir << std::endl;
+            return;
+        }
+    }
 
     // Construct the JSON object
     nlohmann::json configJson = {

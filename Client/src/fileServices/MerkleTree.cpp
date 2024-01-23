@@ -1,6 +1,7 @@
-#include "../../include/fileServices/MerkleTree.h"
+#include "../../include/FileServices/MerkleTree.h"
 #include <filesystem>
 #include <iostream>
+
 
 MerkleTree::MerkleTree() : root(nullptr) {}
 
@@ -15,33 +16,37 @@ void MerkleTree::buildTree(const std::string& directoryPath) {
     root = std::make_shared<Node>(directoryPath);
     buildTreeRecursive(root, std::filesystem::path(directoryPath));
 
-    std::string serializedTree = serializeTree();
-    saveTreeToFile(serializedTree);
+    std::filesystem::path path = std::filesystem::path(Utility::getBongoDir()) / "tree.json";
+    Utility::updateWorkspaceHash(getTreeHash());
+    saveToFile(path);
 }
 
 std::string MerkleTree::getTreeHash() const {
     return root ? root->hash : "";
 }
 
-
-
-void MerkleTree::buildTreeRecursive(std::shared_ptr<Node> &node, const std::filesystem::path &path) {
-    std::filesystem::path defaultDirectory = Utility::getDefaultDirectory();
+void MerkleTree::buildTreeRecursive(std::shared_ptr<Node>& node, const std::filesystem::path& path) {
     if (std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            // Get the relative path from the default directory
-            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), defaultDirectory);
+            // Get the relative path from the top directory
+            std::filesystem::path relativePath = std::filesystem::relative(entry.path(), root->path);
 
+            // Create a new node with the relative path
             auto child = std::make_shared<Node>(relativePath.string());
             node->children.push_back(child);
 
+            // If the entry is a directory, recursively build the tree for this directory
             if (std::filesystem::is_directory(entry.path())) {
                 buildTreeRecursive(child, entry.path());
             } else {
-                child->hash = HashCalculator::calculateHash(relativePath.string());
+                std::filesystem::path debug = std::filesystem::path(root->path) / entry.path();
+                std::cout << "DEBUG: " << debug << std::endl;
+
+                child->hash = HashCalculator::calculateHash(debug);
                 child->isFile = true;
             }
         }
+        // After processing all children, calculate the hash for the current node
         node->hash = combineHashes(node->children);
     }
 }
@@ -58,51 +63,24 @@ std::string MerkleTree::combineHashes(const std::vector<std::shared_ptr<Node>>& 
     return HashCalculator::calculateHash(combinedHashes);
 }
 
-std::string MerkleTree::serializeTree() const {
-    std::string newWorkspaceHash = getTreeHash();
 
-    Utility::updateWorkspaceHash(newWorkspaceHash);
-    nlohmann::json treeJson;
-    serializeNode(treeJson, root);
-
-    return treeJson.dump();
-}
-void MerkleTree::serializeNode(nlohmann::json& parentJson, const std::shared_ptr<Node>& node) const {
+void MerkleTree::serializeTreeToJson(const std::shared_ptr<Node>& node, nlohmann::json& jsonNode) const {
     if (!node) return;
-
-    // Get the relative path from the default directory
-    std::filesystem::path defaultDirectory = Utility::getDefaultDirectory();
-    std::filesystem::path relativePath = std::filesystem::relative(node->path, defaultDirectory);
-
-    // Serialize the current node with the relative path
-    nlohmann::json nodeJson;
-    nodeJson["path"] = relativePath.string();  // Using relative path
-    nodeJson["hash"] = node->hash;
-
-    // Serialize children
+    jsonNode["hash"] = node->hash;
+    jsonNode["path"] = node->path;
     for (const auto& child : node->children) {
         nlohmann::json childJson;
-        serializeNode(childJson, child);
-        nodeJson["children"].push_back(childJson);
-    }
-
-    parentJson.push_back(nodeJson);
-}
-
-void MerkleTree::saveTreeToFile(const std::string& serializedTree) {
-    std::filesystem::path bongoDir = std::filesystem::path(getenv("HOME")) / ".bongo";
-    std::filesystem::create_directories(bongoDir);
-    std::filesystem::path filePath = bongoDir / "tree.json";
-
-    std::ofstream fileStream(filePath);
-    if (fileStream) {
-        fileStream << serializedTree;
-        std::cout << "MerkleTree saved to: " << filePath << std::endl;
-    } else {
-        std::cerr << "Failed to save MerkleTree to file: " << filePath << std::endl;
+        serializeTreeToJson(child, childJson);
+        jsonNode["children"].push_back(childJson);
     }
 }
 
+void MerkleTree::saveToFile(const std::string& filePath) const {
+    nlohmann::json treeJson;
+    serializeTreeToJson(root, treeJson);
+    std::ofstream file(filePath);
+    file << treeJson.dump();
+}
 
 
 // From now on there are only functions to enable testing

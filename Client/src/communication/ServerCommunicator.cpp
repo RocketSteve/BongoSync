@@ -58,6 +58,8 @@ bool ServerCommunicator::sendFile(const std::string& filePath) {
     fileMetadata["data"]["file_size"] = fileSize;
     sendMessage(fileMetadata.dump());
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     // Stream file data
     char buffer[1024];
     while (file.read(buffer, sizeof(buffer)) || file.gcount()) {
@@ -80,7 +82,11 @@ bool ServerCommunicator::sendFile(const std::string& filePath) {
 
     nlohmann::json confirmationJson = nlohmann::json::parse(confirmationResponse);
     if (confirmationJson["data"]["status"] != "success") {
-        std::cerr << "File transfer failed: " << confirmationJson["data"]["message"].get<std::string>() << std::endl;
+        std::string errorMessage = "File transfer failed";
+        if (confirmationJson["data"].contains("message") && confirmationJson["data"]["message"].is_string()) {
+            errorMessage += ": " + confirmationJson["data"]["message"].get<std::string>();
+        }
+        std::cerr << errorMessage << std::endl;
         return false;
     } else {
         std::cout << "File transfer successful" << std::endl;
@@ -263,7 +269,6 @@ bool ServerCommunicator::sendMerkleTreeFile(std::string &ahead) {
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    // Stream file data
     // Stream file data
     char buffer[1024];
     while (file.read(buffer, sizeof(buffer)) || file.gcount()) {

@@ -15,6 +15,8 @@ void MerkleTree::buildTree(const std::string& directoryPath) {
     }
     root = std::make_shared<Node>(directoryPath);
     buildTreeRecursive(root, std::filesystem::path(directoryPath));
+
+    saveToFile("tree/tree.json");
 }
 
 std::string MerkleTree::getTreeHash() const {
@@ -33,10 +35,13 @@ void MerkleTree::buildTreeRecursive(std::shared_ptr<Node>& node, const std::file
 
             // If the entry is a directory, recursively build the tree for this directory
             if (std::filesystem::is_directory(entry.path())) {
+                child->isFile = false;
                 buildTreeRecursive(child, entry.path());
             } else {
-                // If the entry is a file, calculate its hash and set isFile to true
-                child->hash = HashCalculator::calculateHash(relativePath.string());
+                std::filesystem::path debug = entry.path();
+                std::cout << "DEBUG: " << debug << std::endl;
+
+                child->hash = HashCalculator::calculateHash(debug);
                 child->isFile = true;
             }
         }
@@ -116,6 +121,7 @@ void MerkleTree::deserializeTreeFromJson(std::shared_ptr<Node>& node, const nloh
             }
         }
     }
+    node->isFile = node->children.empty();
 }
 
 

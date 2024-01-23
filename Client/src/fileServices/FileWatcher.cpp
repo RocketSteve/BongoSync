@@ -40,6 +40,7 @@ void FileWatcher::stop() {
 
 void FileWatcher::onFileChange(uv_fs_event_t* handle, const char* filename, int events, int status) {
     // Create an instance of HandleSync and call the initiateSync method
+
     std::string directoryPath = Utility::getDefaultDirectory();
     HandleSync syncHandler(directoryPath);
     syncHandler.initiateSync();
