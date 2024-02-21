@@ -42,3 +42,4 @@ add_executable(Client
 
 # Link the libraries to your executable
 # target_link_libraries(Client PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY} nlohmann_json::nlohmann_json PkgConfig::BLAKE3)
+target_link_libraries(Client PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY} nlohmann_json::nlohmann_json)
