@@ -22,11 +22,11 @@ endif()
 find_package(nlohmann_json REQUIRED)
 
 
-# Find BLAKE
-pkg_check_modules(BLAKE3 REQUIRED IMPORTED_TARGET libblake3)
-if(NOT BLAKE3_FOUND)
-    message(FATAL_ERROR "blake3 not found")
-endif()
+# # Find BLAKE
+# pkg_check_modules(BLAKE3 REQUIRED IMPORTED_TARGET libblake3)
+# if(NOT BLAKE3_FOUND)
+#     message(FATAL_ERROR "blake3 not found")
+# endif()
 
 # Include the directories of the libraries
 include_directories(${OPENSSL_INCLUDE_DIR} ${nlohmann_json_INCLUDE_DIRS} ${GTest_INCLUDE_DIRS} ${BLAKE3_INCLUDE_DIRS})
@@ -41,4 +41,4 @@ add_executable(Client
 )
 
 # Link the libraries to your executable
-target_link_libraries(Client PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY} nlohmann_json::nlohmann_json PkgConfig::BLAKE3)
+# target_link_libraries(Client PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY} nlohmann_json::nlohmann_json PkgConfig::BLAKE3)
