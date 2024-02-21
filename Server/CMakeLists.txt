@@ -7,6 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Find PostgreSQL and libpqxx
 find_package(PostgreSQL REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(OpenSSL REQUIRED)
 pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
 
 list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/googletest/1.14.0")
@@ -15,10 +16,7 @@ list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/googletest/1.14.0")
 if(NOT PQXX_FOUND)
     message(FATAL_ERROR "libpqxx not found")
 endif()
-pkg_check_modules(BLAKE3 REQUIRED IMPORTED_TARGET libblake3)
-if(NOT BLAKE3_FOUND)
-    message(FATAL_ERROR "blake3 not found")
-endif()
+
 pkg_check_modules(GTEST REQUIRED IMPORTED_TARGET gtest_main)
 
 if(NOT GTEST_FOUND)
@@ -31,7 +29,7 @@ find_package(nlohmann_json REQUIRED)
 
 
 # Include the directories of the libraries
-include_directories(${PQXX_INCLUDE_DIRS} ${BLAKE3_INCLUDE_DIRS} ${GTEST_INCLUDE_DIRS})
+include_directories(${PQXX_INCLUDE_DIRS} ${BLAKE3_INCLUDE_DIRS} ${GTEST_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
 
 # Add JSON library directory
 # add_subdirectory(lib/json)  # You can remove this line if you're using find_package for nlohmann_json
@@ -55,7 +53,7 @@ add_executable(Server
 )
 
 # Link the libraries to your executable
-target_link_libraries(Server PUBLIC PkgConfig::PQXX PkgConfig::BLAKE3 nlohmann_json::nlohmann_json)
+target_link_libraries(Server PUBLIC PkgConfig::PQXX nlohmann_json::nlohmann_json OpenSSL::SSL OpenSSL::Crypto)
 
 add_executable(ServerTest
         tests/MerkleTreeComparerTest.cpp
@@ -68,4 +66,4 @@ add_executable(ServerTest
         tests/MerkleTreeTest.cpp)
 
 
-target_link_libraries(ServerTest PUBLIC PkgConfig::PQXX PkgConfig::BLAKE3 nlohmann_json::nlohmann_json PkgConfig::GTEST)
+target_link_libraries(ServerTest PUBLIC PkgConfig::PQXX nlohmann_json::nlohmann_json PkgConfig::GTEST OpenSSL::SSL OpenSSL::Crypto)
