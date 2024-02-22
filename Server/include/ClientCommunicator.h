@@ -8,6 +8,7 @@
 #include <vector>
 #include <poll.h>
 #include <sys/stat.h>
+#include <semaphore.h>
 #include "Handlers/RegistrationHandler.h"
 #include "Communciation/MessageBuilder.h"
 #include "Handlers/HandleLogin.h"
@@ -21,6 +22,7 @@ public:
     ~ClientCommunicator();
     void start();
     void stop();
+    sem_t semaphore;
 
 private:
     int listenPort;
