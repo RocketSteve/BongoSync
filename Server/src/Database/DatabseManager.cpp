@@ -4,7 +4,8 @@ DatabaseManager::DatabaseManager() {
     try {
         // Setup the connection string
         std::string connectionStr = "postgresql://myappuser:myapppassword@localhost:5432/myappdb";
-        C = pqxx::connection(connectionStr);
+        //C = pqxx::connection(connectionStr);
+        pqxx::connection C(connectionStr);
 
         if (C.is_open()) {
             std::cout << "Opened database successfully: " << C.dbname() << std::endl;
