@@ -1,4 +1,4 @@
-#include "../../include/FileServices/MerkleTree.h"
+#include "../../include/fileServices/MerkleTree.h"
 #include <filesystem>
 #include <iostream>
 
