@@ -156,6 +156,7 @@ void ClientCommunicator::handleClient(int clientSocket) {
                         responseMessage = messageBuilder.buildUserExistsMessage();
                     }
 
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
                 } else if (messageJson["action"] == "login") {
                     std::string email = messageJson["data"]["email"];
@@ -184,6 +185,7 @@ void ClientCommunicator::handleClient(int clientSocket) {
                         responseMessage = messageBuilder.buildPasswordIncorrectMessage();
                     }
 
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
                 } else if (messageJson["action"] == "check_latest") {
                     std::cout << "Checking if latest" << std::endl;
@@ -212,6 +214,7 @@ void ClientCommunicator::handleClient(int clientSocket) {
                         std::cout << "Message built" << std::endl;
                     }
 
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
                     std::cout << "Message sent" << std::endl;
                 } else if (messageJson["action"] == "tree") {
@@ -237,17 +240,15 @@ void ClientCommunicator::handleClient(int clientSocket) {
                     if (addedFiles.empty()) {
                         std::cout << "No files to send" << std::endl;
 
-                        // Create a JSON message indicating that no sync is needed
                         nlohmann::json noSyncNeededJson;
                         noSyncNeededJson["action"] = "no_sync_needed";
                         std::string noSyncNeededMessage = noSyncNeededJson.dump();
 
-                        // Send the message to the client
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
                         send(clientSocket, noSyncNeededMessage.c_str(), noSyncNeededMessage.length(), 0);
 
                         continue;
                     } else {
-
                         for (size_t i = 0; i < addedFiles.size(); ++i) {
                             nlohmann::json requestFileJson;
                             requestFileJson["action"] = "request_file";
@@ -255,6 +256,8 @@ void ClientCommunicator::handleClient(int clientSocket) {
                             requestFileJson["data"]["remaining_files"] = addedFiles.size() - i;
                             std::cout << "Sending request for file: " << requestFileJson << std::endl;
                             std::string requestFileMessage = requestFileJson.dump();
+
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             send(clientSocket, requestFileMessage.c_str(), requestFileMessage.length(), 0);
 
                             // Wait for a "file_transfer" message from the client
@@ -287,6 +290,8 @@ void ClientCommunicator::handleClient(int clientSocket) {
                 } else {
                     std::string serverMessage = R"({"message": "Hello from Server!"})";
                     std::cout << "Sending message: " << serverMessage << std::endl;
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     send(clientSocket, serverMessage.c_str(), serverMessage.length(), 0);
                 }
             }
@@ -346,6 +351,8 @@ void ClientCommunicator::handleFileReception(int clientSocket, const std::string
     confirmationJson["data"]["status"] = "success";
     confirmationJson["data"]["message"] = "File received successfully";
     std::string confirmationMessage = confirmationJson.dump();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     send(clientSocket, confirmationMessage.c_str(), confirmationMessage.length(), 0);
 }
 
