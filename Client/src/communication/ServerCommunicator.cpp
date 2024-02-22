@@ -39,6 +39,61 @@ std::string ServerCommunicator::receiveMessage() {
     return "";
 }
 
+bool ServerCommunicator::receiveFile() {
+    std::cout << "Receiving file from server...\n";
+    //send file_transfer message to server
+    nlohmann::json fileTransferMsg;
+    fileTransferMsg["action"] = "file_transfer";
+    sendMessage(fileTransferMsg.dump());
+
+    for(int i = 0; i < 5; i++) {
+        std::string metadataMsg = receiveMessage();
+        if (metadataMsg.empty()) {
+            std::cerr << "Failed to receive file metadata\n";
+            return false;
+        }
+
+        nlohmann::json fileMetadata = nlohmann::json::parse(metadataMsg);
+        std::string originalFilePath = fileMetadata["data"]["file_name"];
+        int64_t fileSize = fileMetadata["data"]["file_size"];
+        std::cout << "Receiving file: " << originalFilePath << " (" << fileSize << " bytes)\n";
+
+        std::filesystem::path safeFilePath = std::filesystem::path(originalFilePath).filename();
+
+        std::filesystem::path baseDirectory = "files";
+        std::filesystem::path fullFilePath = baseDirectory / safeFilePath;
+
+        std::filesystem::create_directories(baseDirectory);
+
+        std::ofstream file(fullFilePath, std::ios::binary);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open file for writing: " << fullFilePath << "\n";
+            return false;
+        }
+
+        int64_t remaining = fileSize;
+        char buffer[4096]; // Using a larger buffer for efficiency
+        while (remaining > 0) {
+            int toRead = std::min(remaining, (int64_t)sizeof(buffer));
+            int bytesRead = recv(sockfd, buffer, toRead, 0);
+            if (bytesRead <= 0) {
+                std::cerr << "Failed to receive file data or connection closed\n";
+                file.close();
+                // Optionally, remove the partially written file
+                std::filesystem::remove(fullFilePath);
+                return false;
+            }
+
+            file.write(buffer, bytesRead);
+            remaining -= bytesRead;
+        }
+
+        file.close();
+    }
+    std::cout << "Files received successfully\n";
+    return true;
+}
+
 bool ServerCommunicator::sendFile(const std::string& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
@@ -91,13 +146,13 @@ bool ServerCommunicator::sendFile(const std::string& filePath) {
     } else {
         std::cout << "File transfer successful" << std::endl;
     }
-
+    
     return true;
 }
 
-bool ServerCommunicator::receiveFile(std::string& filePath) {
-    return true;
-}
+// bool ServerCommunicator::receiveFile(std::string& filePath) {
+//     return true;
+// }
 //bool ServerCommunicator::receiveFile() {
 //    // Receive the JSON metadata message
 //    std::string metadataMsg = receiveMessage();
