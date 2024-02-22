@@ -85,6 +85,13 @@ bool HandleStart::validateWithServer(const std::string& password) {
 
 void HandleStart::startFileServices() {
     std::cout << "Starting file services ...\n";
+    std::cout << "Sync? (y/n): ";
+    std::string response;
+    std::cin >> response;
+    if (response == "y") {
+        ServerCommunicator& serverCommunicator = ServerCommunicator::getInstance();
+        serverCommunicator.receiveFile();
+    }
     std::string directoryPath = Utility::getDefaultDirectory();
     startFileWatcherAndSync(directoryPath);
 }
