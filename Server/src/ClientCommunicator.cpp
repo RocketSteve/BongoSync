@@ -1,370 +1,358 @@
-#include "../include/ClientCommunicator.h"
-#include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
-#include <fstream>
-#include <nlohmann/json.hpp>
+#include "../../include/communication/ServerCommunicator.h"
+#include <thread>
 
-ClientCommunicator::ClientCommunicator(int port) : listenPort(port), listenSocket(-1), running(false) {}
 
-ClientCommunicator::~ClientCommunicator() {
-    stop();
+ServerCommunicator& ServerCommunicator::getInstance() {
+    static ServerCommunicator instance;
+    return instance;
 }
 
-void ClientCommunicator::start() {
-    listenSocket = setupServerSocket();
-    sem_init(&semaphore, 0, 1);
-    if (listenSocket == -1) {
-        std::cerr << "Failed to set up server socket." << std::endl;
-        return;
+bool ServerCommunicator::connectToServer(const std::string& serverIP, int serverPort) {
+    if (!setupSocket(serverIP, serverPort)) {
+        return false;
     }
 
-    running = true;
-    std::thread listeningThread(&ClientCommunicator::listenForClients, this);
-    listeningThread.detach();
+    poll_fd.fd = sockfd;
+    poll_fd.events = POLLIN | POLLOUT;
+
+    isConnected = true;
+    return true;
 }
 
-void ClientCommunicator::stop() {
-    running = false;
-    closeServerSocket();
-    for (auto& thread : clientThreads) {
-        if (thread.joinable()) {
-            thread.join();
+bool ServerCommunicator::sendMessage(const std::string& message) {
+    if (!isSocketReadyForIO()) {
+        return false;
+    }
+    return send(sockfd, message.c_str(), message.size(), 0) != -1;
+}
+
+std::string ServerCommunicator::receiveMessage() {
+    if (!isSocketReadyForIO()) {
+        return "";
+    }
+
+    char buffer[1024];
+    int len = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (len > 0) {
+        return std::string(buffer, len);
+    }
+    return "";
+}
+
+bool ServerCommunicator::receiveFile() {
+    std::cout << "Receiving file from server...\n";
+    //send file_transfer message to server
+    nlohmann::json fileTransferMsg;
+    fileTransferMsg["action"] = "file_transfer";
+    sendMessage(fileTransferMsg.dump());
+
+    //sleep(1);
+    for(int i = 0; i < 5; i++) {
+        std::string metadataMsg = receiveMessage();
+        if (metadataMsg.empty()) {
+            std::cerr << "Failed to receive file metadata\n";
+            return false;
+        }
+
+        nlohmann::json fileMetadata = nlohmann::json::parse(metadataMsg);
+        std::string originalFilePath = fileMetadata["data"]["file_name"];
+        int64_t fileSize = fileMetadata["data"]["file_size"];
+        std::cout << "Receiving file: " << originalFilePath << " (" << fileSize << " bytes)\n";
+
+        std::filesystem::path safeFilePath = std::filesystem::path(originalFilePath).filename();
+
+        std::filesystem::path baseDirectory = "files";
+        std::filesystem::path fullFilePath = baseDirectory / safeFilePath;
+
+        std::filesystem::create_directories(baseDirectory);
+
+        std::ofstream file(fullFilePath, std::ios::binary);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open file for writing: " << fullFilePath << "\n";
+            return false;
+        }
+
+        int64_t remaining = fileSize;
+        char buffer[4096]; // Using a larger buffer for efficiency
+        while (remaining > 0) {
+            int toRead = std::min(remaining, (int64_t)sizeof(buffer));
+            int bytesRead = recv(sockfd, buffer, toRead, 0);
+            if (bytesRead <= 0) {
+                std::cerr << "Failed to receive file data or connection closed\n";
+                file.close();
+                // Optionally, remove the partially written file
+                std::filesystem::remove(fullFilePath);
+                return false;
+            }
+
+            file.write(buffer, bytesRead);
+            remaining -= bytesRead;
+        }
+
+        file.close();
+    }
+    std::cout << "Files received successfully\n";
+    return true;
+}
+
+bool ServerCommunicator::sendFile(const std::string& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filePath << std::endl;
+        return false;
+    }
+
+    // Get file size
+    file.seekg(0, std::ios::end);
+    int64_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // Send file metadata as JSON
+    nlohmann::json fileMetadata;
+    fileMetadata["action"] = "file_transfer";
+    fileMetadata["data"]["file_name"] = filePath;
+    fileMetadata["data"]["file_size"] = fileSize;
+    sendMessage(fileMetadata.dump());
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // Stream file data
+    char buffer[1024];
+    while (file.read(buffer, sizeof(buffer)) || file.gcount()) {
+        int len = file.gcount();
+        if (send(sockfd, buffer, len, 0) == -1) {
+            std::cerr << "Failed to send file data" << std::endl;
+            file.close();
+            return false;
         }
     }
+
+    file.close();
+
+    // Wait for confirmation message
+    std::string confirmationResponse = receiveMessage();
+    if (confirmationResponse.empty()) {
+        std::cerr << "No confirmation received" << std::endl;
+        return false;
+    }
+
+    nlohmann::json confirmationJson = nlohmann::json::parse(confirmationResponse);
+    if (confirmationJson["data"]["status"] != "success") {
+        std::string errorMessage = "File transfer failed";
+        if (confirmationJson["data"].contains("message") && confirmationJson["data"]["message"].is_string()) {
+            errorMessage += ": " + confirmationJson["data"]["message"].get<std::string>();
+        }
+        std::cerr << errorMessage << std::endl;
+        return false;
+    } else {
+        std::cout << "File transfer successful" << std::endl;
+    }
+    
+    return true;
 }
 
-int ClientCommunicator::setupServerSocket() const {
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+// bool ServerCommunicator::receiveFile(std::string& filePath) {
+//     return true;
+// }
+//bool ServerCommunicator::receiveFile() {
+//    // Receive the JSON metadata message
+//    std::string metadataMsg = receiveMessage();
+//    if (metadataMsg.empty()) {
+//        std::cerr << "Failed to receive file metadata" << std::endl;
+//        return false;
+//    }
+//
+//    // Parse JSON metadata
+//    nlohmann::json fileMetadata = nlohmann::json::parse(metadataMsg);
+//    std::string filePath = fileMetadata["data"]["file_name"];
+//    int64_t fileSize = fileMetadata["data"]["file_size"];
+//
+//    std::ofstream file(filePath, std::ios::binary);
+//    if (!file.is_open()) {
+//        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
+//        return false;
+//    }
+//
+//    // Receive file data
+//    int64_t remaining = fileSize;
+//    char buffer[1024];
+//    while (remaining > 0) {
+//        int toRead = std::min(remaining, (int64_t)sizeof(buffer));
+//        int bytesRead = recv(sockfd, buffer, toRead, 0);
+//        if (bytesRead <= 0) {
+//            std::cerr << "Failed to receive file data or connection closed" << std::endl;
+//
+//            nlohmann::json errorMsg;
+//            errorMsg["action"] = "file_transfer_confirmation";
+//            errorMsg["data"]["file_name"] = filePath;
+//            errorMsg["data"]["status"] = "error";
+//
+//            sendMessage(errorMsg.dump());
+//
+//            file.close();
+//            return false;
+//        }
+//
+//        file.write(buffer, bytesRead);
+//        remaining -= bytesRead;
+//    }
+//
+//    nlohmann::json confirmationMsg;
+//    confirmationMsg["action"] = "file_transfer_confirmation";
+//    confirmationMsg["data"]["file_name"] = filePath;
+//    confirmationMsg["data"]["status"] = "success";
+//    sendMessage(confirmationMsg.dump());
+//
+//    file.close();
+//    return true;
+//}
+
+
+
+
+void ServerCommunicator::closeConnection() {
+    if (sockfd) {
+        close(sockfd);
+        isConnected = false;
+        sockfd = 0;
+    }
+}
+
+bool ServerCommunicator::setupSocket(const std::string& serverIP, int serverPort) {
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
-        std::cerr << "Failed to create socket." << std::endl;
-        return -1;
+        return false;
     }
 
-    struct sockaddr_in serverAddr{};
-    std::memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(listenPort);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(serverPort);
+    server_addr.sin_addr.s_addr = inet_addr(serverIP.c_str());
 
-    std::cout << "Binding to port " << listenPort << std::endl;
-    std::cout << "Binding to address " << (struct sockaddr *)&serverAddr << std::endl;
-
-    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
-        std::cerr << "Failed to bind socket." << std::endl;
-        close(sockfd);
-        return -1;
-    }
-
-    if (listen(sockfd, 10) == -1) {
-        std::cerr << "Failed to listen on socket." << std::endl;
-        close(sockfd);
-        return -1;
-    }
-
-    return sockfd;
+    return connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) != -1;
 }
 
-void ClientCommunicator::closeServerSocket() const {
-    if (listenSocket != -1) {
-        close(listenSocket);
+bool ServerCommunicator::isSocketReadyForIO() {
+    int ret = poll(&poll_fd, 1, 5000); // 5000 ms timeout
+    if (ret <= 0) {
+        return false; // Error or timeout
     }
+    if (poll_fd.revents & (POLLIN | POLLOUT)) {
+        return true; // Socket ready for read/write
+    }
+    return false;
 }
 
-void ClientCommunicator::listenForClients() {
-    struct sockaddr_in clientAddr;
-    socklen_t clientAddrSize = sizeof(clientAddr);
+bool ServerCommunicator::isConnectedToServer() const {
+    return isConnected;
+}
 
-    while (running) {
-        int clientSocket = accept(listenSocket, (struct sockaddr *)&clientAddr, &clientAddrSize);
-        if (clientSocket == -1) {
-            if (running) {
-                std::cerr << "Failed to accept client." << std::endl;
-            }
-            continue;
+bool ServerCommunicator::isMessageReady() {
+    struct pollfd fdArray[1];
+    fdArray[0].fd = sockfd;
+    fdArray[0].events = POLLIN;
+
+    int ret = poll(fdArray, 1, 0);
+    return (ret > 0) && (fdArray[0].revents & POLLIN);
+}
+
+bool ServerCommunicator::checkForIncomingMessages() {
+    struct pollfd fdArray[1];
+    fdArray[0].fd = sockfd;
+    fdArray[0].events = POLLIN;
+
+    int ret = poll(fdArray, 1, 5000); // 5000 ms timeout
+    return (ret > 0) && (fdArray[0].revents & POLLIN);
+}
+
+void ServerCommunicator::processIncomingMessages() {
+    if (checkForIncomingMessages()) {
+        std::string message = receiveMessage();
+        if (!message.empty()) {
+            // Process the received message
+            std::cout << "Received message: " << message << std::endl;
+            // Additional processing logic here...
         }
-
-        clientThreads.emplace_back(&ClientCommunicator::handleClient, this, clientSocket);
     }
 }
 
+bool ServerCommunicator::sendMerkleTreeFile(std::string &ahead) {
+    bool clientAhead = (ahead == "client");
+    // Base directory
+    std::string baseDirectory = Utility::getBongoDir();
 
-void ClientCommunicator::handleClient(int clientSocket) {
-    const int bufferSize = 4096;
-    char buffer[bufferSize];
-    struct pollfd fd;
-    fd.fd = clientSocket;
-    fd.events = POLLIN;
+    // Relative path of the Merkle tree file
+    std::string relativeFilePath = "/tree.json";
 
-    std::string userEmail = "";
-    std::string hostname = "";
+    // Full path to the Merkle tree file
+    std::string fullPath = baseDirectory + relativeFilePath;
 
-    while (true) {
-        int ret = poll(&fd, 1, 5000);
-        if (ret > 0) {
-            if (fd.revents & POLLIN) {
-                ssize_t bytesRead = recv(clientSocket, buffer, bufferSize - 1, 0);
-                if (bytesRead <= 0) {
-                    if (bytesRead == 0) {
-                        std::cout << "Client disconnected." << std::endl;
-                    } else {
-                        std::cerr << "Error receiving data." << std::endl;
-                    }
-                    break;
-                }
+    // Open the file
+    std::ifstream file(fullPath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << fullPath << std::endl;
+        return false;
+    }
 
-                std::cout << "Received " << bytesRead << " bytes" << std::endl;
-                buffer[bytesRead] = '\0'; // Null-terminate the string
-                nlohmann::json messageJson = nlohmann::json::parse(buffer);
-                std::cout << "Received message: " << messageJson.dump(4) << std::endl;
+    // Get file size
+    file.seekg(0, std::ios::end);
+    int64_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
 
-                if (messageJson["action"] == "file_transfer") {
-                    std::cout << "File metadata: " << messageJson << std::endl;
-                    std::string filePath = messageJson["data"]["file_name"];
-                    int64_t fileSize = messageJson["data"]["file_size"];
+    // Create an instance of MessageBuilder
+    MessageBuilder messageBuilder;
+
+    // Set the necessary fields
+    messageBuilder.setRelativeFilePath(relativeFilePath)
+            .setAhead(clientAhead)
+            .setFileSize(fileSize);
+
+    // Build file metadata message
+    std::string fileMetadata = messageBuilder.buildFileMetadataMessage();
+
+    std::cout << "Sending file metadata: " << fileMetadata << std::endl;
 
 
-                    std::cout << "Receiving file: " << filePath << std::endl;
-                    std::cout << "File size: " << fileSize << std::endl;
-                    handleFileReception(clientSocket,"files", filePath, fileSize);
+    // Get the instance of ServerCommunicator
+    auto& serverCommunicator = ServerCommunicator::getInstance();
 
-                } else if (messageJson["action"] == "register") {
-                    std::string email = messageJson["data"]["email"];
-                    std::string password = messageJson["data"]["password"];
-                    std::string hostname = messageJson["data"]["hostname"];
-                    std::string treeHash = messageJson["data"]["tree_hash"];
+    // Send file metadata
+    if (!serverCommunicator.sendMessage(fileMetadata)) {
+        std::cerr << "Failed to send file metadata." << std::endl;
+        file.close();
+        return false;
+    }
 
-                    bool registrationResult = RegistrationHandler::handleRegistration(email, password, hostname, treeHash);
-                    MessageBuilder messageBuilder;
-                    std::string responseMessage;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-                    if (registrationResult) {
-                        // Code to create a directory named after the hostname
-                        std::filesystem::path dirPath = std::filesystem::current_path() / hostname;
-                        if (!std::filesystem::exists(dirPath)) {
-                            // Create the directory if it doesn't exist
-                            try {
-                                std::filesystem::create_directory(dirPath);
-                                std::cout << "Created directory: " << dirPath << std::endl;
-                            } catch (const std::filesystem::filesystem_error& e) {
-                                std::cerr << "Error creating directory: " << e.what() << std::endl;
-                            }
-                        }
-                        responseMessage = messageBuilder.buildUserAddedMessage();
-                    } else {
-                        responseMessage = messageBuilder.buildUserExistsMessage();
-                    }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
-                } else if (messageJson["action"] == "login") {
-                    std::string email = messageJson["data"]["email"];
-                    std::string passwordHash = messageJson["data"]["password"];
-
-                    userEmail = email;
-
-                    std::string query = "SELECT hostname FROM app_users WHERE email = $1;";
-                    std::vector<std::string> values = {userEmail};
-
-                    DatabaseManager& dbManager = DatabaseManager::getInstance();
-                    hostname = dbManager.readCustomRecord(query, values);
-
-                    std::cout << "Hostname: " << hostname << std::endl;
-
-                    bool loginResult = HandleLogin::checkCredentials(email, passwordHash);
-
-                    MessageBuilder messageBuilder;
-                    std::string responseMessage;
-
-                    if (loginResult) {
-                        std::cout << "Login successful" << std::endl;
-                        responseMessage = messageBuilder.buildPasswordCorrectMessage();
-                    } else {
-                        std::cout << "Login failed" << std::endl;
-                        responseMessage = messageBuilder.buildPasswordIncorrectMessage();
-                    }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
-                } else if (messageJson["action"] == "check_latest") {
-                    std::cout << "Checking if latest" << std::endl;
-                    std::string treeHash = messageJson["data"]["tree_hash"];
-                    std::string modifiedAt = messageJson["data"]["modified_at"];
-
-                    bool isLatest = SyncHandler::isLatestVersion(treeHash, userEmail, modifiedAt);
-
-                    MessageBuilder messageBuilder;
-                    std::string responseMessage;
-
-                    if (isLatest) {
-                        responseMessage = messageBuilder.buildLatestVersionMessage();
-                        std::cout << "Latest version" << std::endl;
-                    } else {
-                        std::cout << "Not latest version" << std::endl;
-                        std::string ahead = SyncHandler::compareTimestamps(userEmail, modifiedAt);
-                        std::cout << ahead << " is ahead" << std::endl;
-
-                        messageBuilder.setAhead(ahead);
-
-                        std::cout << "Sending " << ahead << " is ahead message" << std::endl;
-
-                        responseMessage = messageBuilder.buildNotLatestVersionMessage();
-
-                        std::cout << "Message built" << std::endl;
-                    }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
-                    std::cout << "Message sent" << std::endl;
-                } else if (messageJson["action"] == "tree") {
-                    sem_wait(&semaphore);
-                    std::cout << "Semaphore acquired tree" << std::endl;
-                    
-                    std::cout << "Receiving Merkle tree" << std::endl;
-                    bool ahead = messageJson["data"]["ahead"];
-                    std::cout << "ahead: " << ahead << std::endl;
-                    std::string filePath = messageJson["data"]["file_name"];
-                    std::cout << "filePath: " << filePath << std::endl;
-                    int64_t fileSize = messageJson["data"]["file_size"];
-                    std::cout << "fileSize: " << fileSize << std::endl;
-
-                    std::cout << "ahead: " << ahead << std::endl;
-                    //std::string ahead = "client";
-
-                    std::cout << "Receiving file: " << filePath << std::endl;
-                    std::cout << "File size: " << fileSize << std::endl;
-
-                    handleFileReception(clientSocket, "tree", filePath, fileSize);
-
-                    std::vector<std::string> addedFiles = SyncHandler::treeReception(ahead, userEmail);
-                    std::cout << "Merkle tree received" << std::endl;
-
-                    if (addedFiles.empty()) {
-                        std::cout << "No files to send" << std::endl;
-
-                        nlohmann::json noSyncNeededJson;
-                        noSyncNeededJson["action"] = "no_sync_needed";
-                        std::string noSyncNeededMessage = noSyncNeededJson.dump();
-
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                        send(clientSocket, noSyncNeededMessage.c_str(), noSyncNeededMessage.length(), 0);
-
-                        sem_post(&semaphore);
-                        std::cout << "Semaphore released tree" << std::endl;
-
-                        continue;
-                    } else {
-                        for (size_t i = 0; i < addedFiles.size(); ++i) {
-                            nlohmann::json requestFileJson;
-                            requestFileJson["action"] = "request_file";
-                            requestFileJson["data"]["filePath"] = addedFiles[i];
-                            requestFileJson["data"]["remaining_files"] = addedFiles.size() - i;
-                            std::cout << "Sending request for file: " << requestFileJson << std::endl;
-                            std::string requestFileMessage = requestFileJson.dump();
-
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            send(clientSocket, requestFileMessage.c_str(), requestFileMessage.length(), 0);
-
-                            // Wait for a "file_transfer" message from the client
-                            nlohmann::json fileMetadataJson;
-                            ssize_t bytesRead = recv(clientSocket, buffer, bufferSize - 1, 0);
-                            if (bytesRead > 0) {
-                                buffer[bytesRead] = '\0'; // Null-terminate the string
-                                fileMetadataJson = nlohmann::json::parse(buffer);
-                                if (fileMetadataJson["action"] == "file_transfer") {
-                                    std::cout << "Received file metadata from client: " << fileMetadataJson << std::endl;
-
-                                    // Extract file size and file path from the file metadata
-                                    int64_t fileSize = fileMetadataJson["data"]["file_size"];
-                                    std::string originalFilePath = fileMetadataJson["data"]["file_name"];
-
-                                    // Receive the file from the client
-                                    handleFileReception(clientSocket, hostname, originalFilePath, fileSize);
-                                }
-                            }
-                        }
-                    }
-                    MerkleTree localTree;
-                    localTree.buildTree(hostname);
-
-                    WorkspaceManager workspaceManager;
-                    std::string newWorkspaceHash = localTree.getTreeHash();
-                    workspaceManager.updateWorkspaceByEmail(userEmail, newWorkspaceHash);
-
-                    sem_post(&semaphore);
-                    std::cout << "Semaphore released tree" << std::endl;
-
-                } else {
-                    std::string serverMessage = R"({"message": "Hello from Server!"})";
-                    std::cout << "Sending message: " << serverMessage << std::endl;
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    send(clientSocket, serverMessage.c_str(), serverMessage.length(), 0);
-                }
-            }
-        } else if (ret == 0) {
-            std::cout << "No data received. Still waiting..." << std::endl;
-        } else {
-            std::cerr << "Poll error." << std::endl;
-            break;
+    // Stream file data
+    char buffer[1024];
+    while (file.read(buffer, sizeof(buffer)) || file.gcount()) {
+        int len = file.gcount();
+        if (send(sockfd, buffer, len, 0) == -1) {
+            std::cerr << "Failed to send file data" << std::endl;
+            file.close();
+            return false;
         }
     }
 
-    close(clientSocket); // Close the socket after communication ends
-}
+    file.close();
 
-void ClientCommunicator::handleFileReception(int clientSocket, const std::string& targetPath, const std::string& originalFilePath, int64_t fileSize) {
-    // Ensure the target directory exists
-    std::filesystem::path targetDir = std::filesystem::path(targetPath);
-    std::filesystem::create_directories(targetDir);
-
-    // Extract filename from original file path
-    std::string filename = originalFilePath.substr(originalFilePath.find_last_of("/\\") + 1);
-
-    // Construct the new file path
-    std::filesystem::path newFilePath = targetDir / filename;
-
-    std::cout << "Receiving file to: " << newFilePath << std::endl;
-
-    std::ofstream outputFile(newFilePath, std::ios::binary);
-    if (!outputFile.is_open()) {
-        std::cerr << "Failed to open file for writing: " << newFilePath << std::endl;
-        return;
+    // Wait for confirmation message
+    std::string confirmationResponse = serverCommunicator.receiveMessage();
+    if (confirmationResponse.empty()) {
+        std::cerr << "No confirmation received" << std::endl;
+        return false;
     }
 
-
-    int64_t totalBytesReceived = 0;
-    const int bufferSize = 4096;
-    char buffer[bufferSize];
-
-    while (totalBytesReceived < fileSize) {
-        std::cout << "Received bytes: " << totalBytesReceived << std::endl;
-        ssize_t bytesRead = recv(clientSocket, buffer, std::min(fileSize - totalBytesReceived, (int64_t)bufferSize), 0);
-        if (bytesRead <= 0) {
-            std::cerr << "Error receiving file data or connection closed" << std::endl;
-            // Optionally, send an error message to the client
-            outputFile.close();
-            return;
-        }
-
-        outputFile.write(buffer, bytesRead);
-        totalBytesReceived += bytesRead;
+    nlohmann::json confirmationJson = nlohmann::json::parse(confirmationResponse);
+    if (confirmationJson["data"]["status"] != "success") {
+        std::cerr << "File transfer failed: " << confirmationJson["data"]["message"].get<std::string>() << std::endl;
+        return false;
+    } else {
+        std::cout << "File transfer successful" << std::endl;
     }
 
-    outputFile.close();
-
-    // After successful file reception, send confirmation back to client
-    nlohmann::json confirmationJson;
-    confirmationJson["data"]["status"] = "success";
-    confirmationJson["data"]["message"] = "File received successfully";
-    std::string confirmationMessage = confirmationJson.dump();
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    send(clientSocket, confirmationMessage.c_str(), confirmationMessage.length(), 0);
+    return true;
 }
-
-
-
 
