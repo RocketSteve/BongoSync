@@ -4,11 +4,11 @@
 #include <openssl/evp.h>
 #include <filesystem>
 #include <sstream>
+#include <iomanip>
 
+// Function to calculate hash from file path
 std::string HashCalculator::calculateHash(const std::string &input) {
-    bool isFilePath = std::filesystem::exists(input);
-
-    if (isFilePath) {
+    if (isInputFilePath(input)) {
         std::cout << "Calculating hash for file " << input << std::endl;
         std::ifstream file(input, std::ios::binary);
         if (!file.is_open()) {
@@ -55,4 +55,9 @@ std::string HashCalculator::finalizeHash(const unsigned char* digest, unsigned i
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)digest[i];
     }
     return ss.str();
+}
+
+bool HashCalculator::isInputFilePath(const std::string &input) {
+    // Simply check if the input exists as a file path
+    return std::filesystem::exists(input);
 }

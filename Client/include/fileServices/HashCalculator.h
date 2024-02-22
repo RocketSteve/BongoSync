@@ -11,6 +11,7 @@ private:
     static std::string processFileInChunks(std::ifstream &file);
     static std::string processChunk(const char* data, size_t size);
     static std::string finalizeHash(const unsigned char* digest, unsigned int length);
+    static bool isInputFilePath(const std::string &input);
 };
 
 #endif // HASHCALCULATOR_H

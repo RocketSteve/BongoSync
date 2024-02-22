@@ -182,6 +182,7 @@ void HandleSync::handleServerResponse() {
 
         int remainingFiles = responseJson["data"].value("remaining_files", 0);
         for (int i = remainingFiles; i > 0; i--) {
+            std::thread:
             std::cout << "Remaining files: " << i << std::endl;
             std::string filePath = responseJson["data"].value("filePath", "");
             std::string defaultDirectory = Utility::getDefaultDirectory();
