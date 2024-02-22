@@ -2,6 +2,8 @@
 #define WORKSPACEMANAGER_H
 
 #include <string>
+#include <iomanip>
+#include <chrono>
 #include "DatabaseManager.h"
 
 class WorkspaceManager {
