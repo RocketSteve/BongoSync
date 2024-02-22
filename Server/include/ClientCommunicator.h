@@ -23,6 +23,8 @@ public:
     void start();
     void stop();
     sem_t semaphore;
+    void sendFile(int clientSocket, const std::string& filePath);
+    void FindAllFiles(int clientSocket);
 
 private:
     int listenPort;
