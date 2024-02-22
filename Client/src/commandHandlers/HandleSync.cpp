@@ -191,6 +191,8 @@ void HandleSync::handleServerResponse() {
             sendFileToServer(fullPath);
             std::cout << "Remaining files: " << i << std::endl;
 
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
             // If all files have been sent, break the loop
             if (i == 1) {
                 break;
@@ -204,6 +206,7 @@ void HandleSync::handleServerResponse() {
             }
 
             // Parse the next response
+            std::cout << "Received response: " << responseStr << "\n";
             responseJson = nlohmann::json::parse(responseStr);
 
         }
