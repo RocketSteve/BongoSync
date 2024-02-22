@@ -15,6 +15,7 @@ ClientCommunicator::~ClientCommunicator() {
 
 void ClientCommunicator::start() {
     listenSocket = setupServerSocket();
+    sem_init(&semaphore, 0, 1);
     if (listenSocket == -1) {
         std::cerr << "Failed to set up server socket." << std::endl;
         return;
@@ -218,6 +219,9 @@ void ClientCommunicator::handleClient(int clientSocket) {
                     send(clientSocket, responseMessage.c_str(), responseMessage.length(), 0);
                     std::cout << "Message sent" << std::endl;
                 } else if (messageJson["action"] == "tree") {
+                    sem_wait(&semaphore);
+                    std::cout << "Semaphore acquired tree" << std::endl;
+                    
                     std::cout << "Receiving Merkle tree" << std::endl;
                     bool ahead = messageJson["data"]["ahead"];
                     std::cout << "ahead: " << ahead << std::endl;
@@ -246,6 +250,9 @@ void ClientCommunicator::handleClient(int clientSocket) {
 
                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
                         send(clientSocket, noSyncNeededMessage.c_str(), noSyncNeededMessage.length(), 0);
+
+                        sem_post(&semaphore);
+                        std::cout << "Semaphore released tree" << std::endl;
 
                         continue;
                     } else {
@@ -286,6 +293,8 @@ void ClientCommunicator::handleClient(int clientSocket) {
                     std::string newWorkspaceHash = localTree.getTreeHash();
                     workspaceManager.updateWorkspaceByEmail(userEmail, newWorkspaceHash);
 
+                    sem_post(&semaphore);
+                    std::cout << "Semaphore released tree" << std::endl;
 
                 } else {
                     std::string serverMessage = R"({"message": "Hello from Server!"})";
