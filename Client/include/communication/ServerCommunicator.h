@@ -27,7 +27,7 @@ public:
     bool receiveFile(const std::string& filePath);
     void closeConnection();
     bool isMessageReady();
-    bool receiveFile(std::string& filePath);
+    bool receiveFile();
     void processIncomingMessages();
     bool checkForIncomingMessages();
 
